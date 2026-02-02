@@ -340,15 +340,22 @@ internal class ScreenLockActivity : FragmentActivity() {
         viewModel.setupMessageVisible.value = false
     }
 
-    private fun sendAccessibilityEvent(text: String?) {
-        val am = this.getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager?
-        if (am != null && am.isEnabled) {
-            val event = AccessibilityEvent.obtain()
-            event.setEventType(TYPE_WINDOW_STATE_CHANGED)
-            event.setClassName(javaClass.getName())
-            event.setPackageName(this.packageName)
-            event.text.add(text)
-            am.sendAccessibilityEvent(event)
+    private fun sendAccessibilityEvent(eventText: String?) {
+        val accessibilityManager = getSystemService(ACCESSIBILITY_SERVICE) as? AccessibilityManager ?: return
+        if (accessibilityManager.isEnabled) {
+            accessibilityManager.sendAccessibilityEvent(
+                if (SDK_INT >= R) {
+                    AccessibilityEvent()
+                } else {
+                    // TODO: Remove when min API > 29.
+                    @Suppress("DEPRECATION")
+                    AccessibilityEvent.obtain()
+                }.apply {
+                    setEventType(TYPE_WINDOW_STATE_CHANGED)
+                    setClassName(javaClass.getName())
+                    setPackageName(this.packageName)
+                    text.add(eventText)
+                })
         }
     }
 
