@@ -45,6 +45,7 @@ import android.view.accessibility.AccessibilityManager
 import android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.activity.viewModels
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
@@ -182,19 +183,14 @@ internal class ScreenLockActivity : FragmentActivity() {
         presentAuth()
     }
 
-    @Deprecated("This method has been deprecated in favor of using the Activity Result API\n      which brings increased type safety via an {@link ActivityResultContract} and the prebuilt\n      contracts for common intents available in\n      {@link androidx.activity.result.contract.ActivityResultContracts}, provides hooks for\n      testing, and allow receiving results in separate, testable classes independent from your\n      activity. Use\n      {@link #registerForActivityResult(ActivityResultContract, ActivityResultCallback)}\n      with the appropriate {@link ActivityResultContract} and handling the result in the\n      {@link ActivityResultCallback#onActivityResult(Object) callback}.")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        // TODO: Resolve deprecation. ECJ20260129
-        super.onActivityResult(requestCode, resultCode, data)
-
+    /** The activity result for the biometric setup */
+    val biometricSetupActivityResultLauncher = registerForActivityResult(StartActivityForResult()) {
         /*
          * Present authentication again after the user has come back from
          * security settings to ensure they actually set up a secure lock screen
          * such as pin, pattern, password etc. instead of swipe or none.
          */
-        if (requestCode == SETUP_REQUEST_CODE) {
-            presentAuth()
-        }
+        presentAuth()
     }
 
     @Deprecated("This method has been deprecated in favor of using the\n      {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.\n      The OnBackPressedDispatcher controls how back button events are dispatched\n      to one or more {@link OnBackPressedCallback} objects.")
@@ -227,10 +223,10 @@ internal class ScreenLockActivity : FragmentActivity() {
                 if (SDK_INT >= R) {
                     val biometricIntent = Intent(ACTION_BIOMETRIC_ENROLL)
                     biometricIntent.putExtra(EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED, getAuthenticators())
-                    viewModel.setupButtonAction.value = { startActivityForResult(biometricIntent, SETUP_REQUEST_CODE) }
+                    viewModel.setupButtonAction.value = { biometricSetupActivityResultLauncher.launch(biometricIntent) }
                 } else {
                     val lockScreenIntent = Intent(ACTION_SET_NEW_PASSWORD)
-                    viewModel.setupButtonAction.value = { startActivityForResult(lockScreenIntent, SETUP_REQUEST_CODE) }
+                    viewModel.setupButtonAction.value = { biometricSetupActivityResultLauncher.launch(lockScreenIntent) }
                 }
                 viewModel.setupButtonLabel.value = getString(sf__screen_lock_setup_button)
                 viewModel.setupButtonVisible.value = true
@@ -358,7 +354,6 @@ internal class ScreenLockActivity : FragmentActivity() {
 
     companion object {
         private const val TAG = "ScreenLockActivity"
-        private const val SETUP_REQUEST_CODE = 70
     }
 }
 
