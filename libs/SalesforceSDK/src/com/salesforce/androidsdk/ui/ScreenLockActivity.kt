@@ -26,7 +26,6 @@
  */
 package com.salesforce.androidsdk.ui
 
-import android.annotation.SuppressLint
 import android.app.admin.DevicePolicyManager.ACTION_SET_NEW_PASSWORD
 import android.content.Intent
 import android.content.pm.PackageManager.FEATURE_FACE
@@ -43,6 +42,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
 import android.view.accessibility.AccessibilityManager
 import android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
@@ -180,6 +180,8 @@ internal class ScreenLockActivity : FragmentActivity() {
             ) { /* Purposefully blank */ }
         }
 
+        onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
+
         presentAuth()
     }
 
@@ -193,11 +195,11 @@ internal class ScreenLockActivity : FragmentActivity() {
         presentAuth()
     }
 
-    @Deprecated("This method has been deprecated in favor of using the\n      {@link OnBackPressedDispatcher} via {@link #getOnBackPressedDispatcher()}.\n      The OnBackPressedDispatcher controls how back button events are dispatched\n      to one or more {@link OnBackPressedCallback} objects.")
-    @SuppressLint("MissingSuperCall")
-    override fun onBackPressed() {
-        // TODO: Resolve deprecation. ECJ20260129
-        // Purposefully blank
+    /** A callback to disable back navigation */
+    private val onBackPressedCallback = object : OnBackPressedCallback(true) {
+        override fun handleOnBackPressed() {
+            // Purposefully blank
+        }
     }
 
     private fun presentAuth() {
