@@ -26,11 +26,25 @@
  */
 package com.salesforce.androidsdk.ui
 
+import android.os.Build.VERSION.SDK_INT
+import android.os.Build.VERSION_CODES.R
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
+import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
+import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.Factory
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.salesforce.androidsdk.app.SalesforceSDKManager
 
+/**
+ * A view model for the screen lock view and activity.
+ * @param appName The displayed name of the app. This parameter is intended for
+ * testing purposes only.  Defaults to "App"
+ * @param biometricAuthenticators The biometric authenticators to use. This
+ * parameter is intended for testing purposes only.  Defaults to appropriate
+ * values for the current Android SDK
+ */
 internal class ScreenLockViewModel() : ViewModel() {
 
     // region Observables
@@ -42,22 +56,50 @@ internal class ScreenLockViewModel() : ViewModel() {
     val setupButtonAction = mutableStateOf({})
 
     /** The label for the setup button */
-    val setupButtonLabel = mutableStateOf("")
+    val setupButtonLabel = mutableStateOf(null as String?)
 
     /** The visibility of the setup button */
     val setupButtonVisible = mutableStateOf(true)
 
     /** The text for the setup message */
-    val setupMessageText = mutableStateOf("")
+    val setupMessageText = mutableStateOf(null as String?)
 
     /** The visibility of the setup message */
     val setupMessageVisible = mutableStateOf(true)
 
     // endregion
+    // region Computed Values
 
+    /**
+     * The displayed name of the app.
+     * @param sdkManager The SalesforceSDKManager to use. This parameter is
+     * intended for testing purposes only. Defaults to the current
+     * SalesforceSDKManager instance
+     * @return The displayed name of the app
+     */
+    fun appName(
+        sdkManager: SalesforceSDKManager = SalesforceSDKManager.getInstance(),
+    ) = sdkManager.appName ?: "App"
+
+    /**
+     * Returns the biometric authenticators to use.
+     * @param build The Android SDK build. This parameter is intended for
+     * testing purposes only. Defaults to the current Android SDK build
+     */
+    fun biometricAuthenticators(
+        build: Int = SDK_INT,
+    ) = if (build >= R) {
+        BIOMETRIC_STRONG or DEVICE_CREDENTIAL
+    } else {
+        BIOMETRIC_WEAK or DEVICE_CREDENTIAL
+    }
+
+    // endregion
 
     companion object {
-        val Factory: Factory = object : Factory {
+
+        /** View model factory */
+        internal val Factory = object : Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(
                 modelClass: Class<T>,
@@ -66,7 +108,5 @@ internal class ScreenLockViewModel() : ViewModel() {
                 return ScreenLockViewModel() as T
             }
         }
-
-        private const val TAG = "ScreenLockViewModel"
     }
 }

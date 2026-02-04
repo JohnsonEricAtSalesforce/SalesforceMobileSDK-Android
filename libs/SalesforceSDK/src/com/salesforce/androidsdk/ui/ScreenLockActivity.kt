@@ -26,8 +26,11 @@
  */
 package com.salesforce.androidsdk.ui
 
+import android.annotation.SuppressLint
 import android.app.admin.DevicePolicyManager.ACTION_SET_NEW_PASSWORD
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.PackageManager.FEATURE_FACE
 import android.content.pm.PackageManager.FEATURE_IRIS
 import android.os.Build.VERSION.SDK_INT
@@ -45,12 +48,12 @@ import android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
 import androidx.activity.viewModels
+import androidx.annotation.VisibleForTesting
 import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
-import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
-import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE
 import androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED
 import androidx.biometric.BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE
@@ -62,43 +65,15 @@ import androidx.biometric.BiometricPrompt
 import androidx.biometric.BiometricPrompt.AuthenticationCallback
 import androidx.biometric.BiometricPrompt.AuthenticationResult
 import androidx.biometric.BiometricPrompt.PromptInfo
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.PaddingValues.Absolute
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment.Companion.CenterHorizontally
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color.Companion.Transparent
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight.Companion.Normal
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 import com.salesforce.androidsdk.R.drawable.sf__salesforce_logo
-import com.salesforce.androidsdk.R.string.sf__application_icon
-import com.salesforce.androidsdk.R.string.sf__logout
 import com.salesforce.androidsdk.R.string.sf__screen_lock_auth_error
 import com.salesforce.androidsdk.R.string.sf__screen_lock_auth_failed
 import com.salesforce.androidsdk.R.string.sf__screen_lock_auth_success
@@ -111,88 +86,112 @@ import com.salesforce.androidsdk.R.string.sf__screen_lock_subtitle
 import com.salesforce.androidsdk.R.string.sf__screen_lock_title
 import com.salesforce.androidsdk.R.style.SalesforceSDK_ScreenLock
 import com.salesforce.androidsdk.R.style.SalesforceSDK_ScreenLock_Dark
+import com.salesforce.androidsdk.accounts.UserAccountManager
+import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager.Companion.getInstance
 import com.salesforce.androidsdk.auth.OAuth2.LogoutReason.USER_LOGOUT
 import com.salesforce.androidsdk.security.ScreenLockManager
 import com.salesforce.androidsdk.security.ScreenLockManager.Companion.MOBILE_POLICY_PREF
 import com.salesforce.androidsdk.security.ScreenLockManager.Companion.SCREEN_LOCK
 import com.salesforce.androidsdk.ui.ScreenLockViewModel.Companion.Factory
-import com.salesforce.androidsdk.ui.theme.hintTextColor
+import com.salesforce.androidsdk.ui.components.ScreenLockView
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
-import com.salesforce.androidsdk.util.test.ExcludeFromJacocoGeneratedReport
 
 /**
  * An activity that locks the app behind the operating system's provided
- * authentication.
+ * authentication or guides the user through biometric enrollment.
  */
-internal class ScreenLockActivity : FragmentActivity() {
-
-    /** The displayed name of the app */
-    private val appName = runCatching { getInstance().appName }.getOrNull() ?: "App"
+class ScreenLockActivity : FragmentActivity() {
 
     /** View model */
-    private val viewModel: ScreenLockViewModel
+    @VisibleForTesting
+    internal val viewModel: ScreenLockViewModel
             by viewModels { Factory }
 
-    @OptIn(ExperimentalMaterial3Api::class)
+    /** The activity result for the biometric setup */
+    private val biometricSetupActivityResultLauncher = registerForActivityResult(StartActivityForResult(), ::onBiometricSetupActivityResult)
+
     @Override
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        create()
+    }
+
+    /**
+     * Implements the creation of the activity.
+     * @param build The Android SDK build. This parameter is intended for
+     * testing purposes only. Defaults to the current Android SDK build
+     * @param packageManager The PackageManager to use. This parameter is
+     * intended for testing purposes only. Defaults to the current
+     * PackageManager instance
+     * @param sdkManager The SalesforceSDKManager to use. This parameter is
+     * intended for testing purposes only. Defaults to the current
+     * SalesforceSDKManager instance
+     */
+    @SuppressLint("NewApi")
+    @VisibleForTesting
+    internal fun create(
+        build: Int = SDK_INT,
+        packageManager: PackageManager = this.packageManager,
+        sdkManager: SalesforceSDKManager = getInstance(),
+    ) {
         enableEdgeToEdge()
 
         // Protect against screenshots.
         window.setFlags(FLAG_SECURE, FLAG_SECURE)
 
-        val isDarkTheme = getInstance().isDarkTheme
+        // Set the theme.
+        val isDarkTheme = sdkManager.isDarkTheme
         setTheme(if (isDarkTheme) SalesforceSDK_ScreenLock_Dark else SalesforceSDK_ScreenLock)
 
-        // Makes the navigation bar visible on light themes.
+        // Make the navigation bar visible on light themes.
         getInstance().setViewNavigationVisibility(this)
 
+        // Get the app icon.
+        val appIcon = getAppIcon(packageManager)
+
+        // Set the content.
         setContent {
             MaterialTheme(colorScheme = getInstance().colorScheme()) {
                 Scaffold(
                     contentWindowInsets = WindowInsets.safeDrawing,
                 ) { innerPadding ->
-                    ScreenLockView2(
-                        appName = appName,
+                    ScreenLockView(
+                        appName = viewModel.appName(),
+                        appIcon = rememberDrawablePainter(appIcon),
                         innerPadding = innerPadding,
-                        appIcon = rememberDrawablePainter(
-                            runCatching {
-                                packageManager.getApplicationIcon(applicationInfo.packageName)
-                            }.getOrNull() ?: ResourcesCompat.getDrawable(
-                                resources,
-                                sf__salesforce_logo,
-                                null
-                            )
-                        ),
-                        action = { logoutScreenLockUsers() },
-                        viewModel = viewModel
+                        logoutAction = ::logoutScreenLockUsers,
+                        viewModel = viewModel,
                     )
                 }
             }
         }
 
         // TODO: Remove this when min API > 33
-        if (SDK_INT >= TIRAMISU) {
+        // Disable back navigation.
+        if (build >= TIRAMISU) {
             getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
-                PRIORITY_DEFAULT
-            ) { /* Purposefully blank */ }
+                PRIORITY_DEFAULT, ::noOp
+            )
         }
-
         onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
 
-        presentAuth()
+        // Present biometric authentication or enrollment.
+        presentBiometricAuthentication()
     }
 
-    /** The activity result for the biometric setup */
-    val biometricSetupActivityResultLauncher = registerForActivityResult(StartActivityForResult()) {
+    /**
+     * Handles the result of the biometric setup activity.
+     * @param result The result of the biometric setup activity
+     */
+    @VisibleForTesting
+    internal fun onBiometricSetupActivityResult(result: ActivityResult) {
         /*
          * Present authentication again after the user has come back from
          * security settings to ensure they actually set up a secure lock screen
          * such as pin, pattern, password etc. instead of swipe or none.
          */
-        presentAuth()
+        presentBiometricAuthentication()
     }
 
     /** A callback to disable back navigation */
@@ -202,11 +201,44 @@ internal class ScreenLockActivity : FragmentActivity() {
         }
     }
 
-    private fun presentAuth() {
-        val biometricPrompt = getBiometricPrompt()
-        val biometricManager = BiometricManager.from(this)
+    /**
+     * Gets the app icon.
+     * @param packageManager The PackageManager to use. This parameter is
+     * intended for testing purposes only. Defaults to the current
+     * PackageManager instance
+     */
+    @VisibleForTesting
+    internal fun getAppIcon(
+        packageManager: PackageManager = this.packageManager,
+    ) = runCatching {
+        packageManager.getApplicationIcon(applicationInfo.packageName)
+    }.getOrNull() ?: ResourcesCompat.getDrawable(resources, sf__salesforce_logo, null)
 
-        when (biometricManager.canAuthenticate(getAuthenticators())) {
+    /**
+     * Challenges the user to authenticate using biometric authentication when
+     * enrolled or prompts the user to enroll in biometric authentication before
+     * allowing the user to proceed.
+     * @param biometricManager The biometric manager to use for authentication.
+     * This parameter is intended for testing purposes only.  Defaults to a new
+     * BiometricManager created from this activity
+     * @param biometricPrompt The biometric prompt to use for authentication.
+     * This parameter is intended for testing purposes only.  Defaults to a new
+     * BiometricPrompt
+     * @param biometricSetupActivityResultLauncher The activity result launcher
+     * to use for biometric setup. This parameter is intended for testing
+     * purposes only.  Defaults to the biometric setup activity result launcher
+     * @param build The Android SDK build. This parameter is intended for
+     * testing purposes only. Defaults to the current Android SDK build
+     */
+    @SuppressLint("InlinedApi") // TODO: Remove when min API > 29.
+    @VisibleForTesting
+    internal fun presentBiometricAuthentication(
+        biometricManager: BiometricManager = BiometricManager.from(this),
+        biometricPrompt: BiometricPrompt = getBiometricPrompt(),
+        biometricSetupActivityResultLauncher: ActivityResultLauncher<Intent> = this.biometricSetupActivityResultLauncher,
+        build: Int = SDK_INT,
+    ) {
+        when (biometricManager.canAuthenticate(viewModel.biometricAuthenticators())) {
             BIOMETRIC_ERROR_NO_HARDWARE, BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED, BIOMETRIC_ERROR_UNSUPPORTED, BIOMETRIC_STATUS_UNKNOWN -> {
                 // This should never happen.
                 val error = getString(sf__screen_lock_error)
@@ -216,19 +248,19 @@ internal class ScreenLockActivity : FragmentActivity() {
 
             BIOMETRIC_ERROR_HW_UNAVAILABLE -> setErrorMessage(getString(sf__screen_lock_error_hw_unavailable))
             BIOMETRIC_ERROR_NONE_ENROLLED -> {
-                setErrorMessage(getString(sf__screen_lock_setup_required, appName))
+                setErrorMessage(getString(sf__screen_lock_setup_required, viewModel.appName()))
 
-                /*
-                 * Prompts the user to setup the operating system screen lock and biometrics.
-                 * TODO: Remove when min API > 29.
-                 */
-                if (SDK_INT >= R) {
-                    val biometricIntent = Intent(ACTION_BIOMETRIC_ENROLL)
-                    biometricIntent.putExtra(EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED, getAuthenticators())
-                    viewModel.setupButtonAction.value = { biometricSetupActivityResultLauncher.launch(biometricIntent) }
+                // Prompts the user to setup the operating system screen lock and biometrics.
+                if (build >= R) { // TODO: Remove when min API > 29.
+                    viewModel.setupButtonAction.value = {
+                        biometricSetupActivityResultLauncher.launch(Intent(ACTION_BIOMETRIC_ENROLL).apply {
+                            putExtra(EXTRA_BIOMETRIC_AUTHENTICATORS_ALLOWED, viewModel.biometricAuthenticators())
+                        })
+                    }
                 } else {
-                    val lockScreenIntent = Intent(ACTION_SET_NEW_PASSWORD)
-                    viewModel.setupButtonAction.value = { biometricSetupActivityResultLauncher.launch(lockScreenIntent) }
+                    viewModel.setupButtonAction.value = {
+                        biometricSetupActivityResultLauncher.launch(Intent(ACTION_SET_NEW_PASSWORD))
+                    }
                 }
                 viewModel.setupButtonLabel.value = getString(sf__screen_lock_setup_button)
                 viewModel.setupButtonVisible.value = true
@@ -236,117 +268,173 @@ internal class ScreenLockActivity : FragmentActivity() {
 
             BIOMETRIC_SUCCESS -> {
                 resetUI()
-                biometricPrompt.authenticate(getPromptInfo())
+                biometricPrompt.authenticate(getBiometricPromptInfo())
             }
         }
     }
 
-    private fun getPromptInfo(): PromptInfo {
-        var hasFaceUnlock = false
-        if (SDK_INT >= Q) {
-            hasFaceUnlock = packageManager.hasSystemFeature(FEATURE_FACE) ||
-                    (packageManager.hasSystemFeature(FEATURE_IRIS))
+    /**
+     * Determines how the biometric prompt should appear and behave.
+     * @param build The Android SDK build. This parameter is intended for
+     * testing purposes only. Defaults to the current Android SDK build
+     * @param packageManager The package manager to use for authentication.
+     * This parameter is intended for testing purposes only. Defaults to the
+     * current package manager
+     */
+    @SuppressLint("InlinedApi") // TODO: Remove when min API > 28.
+    @VisibleForTesting
+    internal fun getBiometricPromptInfo(
+        build: Int = SDK_INT,
+        packageManager: PackageManager = this.packageManager,
+    ): PromptInfo {
+        val hasFaceUnlock = if (build >= Q) { // TODO: Remove when min API > 28.
+            packageManager.hasSystemFeature(FEATURE_FACE) || (packageManager.hasSystemFeature(FEATURE_IRIS))
+        } else {
+            false
         }
 
         return PromptInfo.Builder()
-            .setTitle(getString(sf__screen_lock_title, appName))
-            .setSubtitle(getString(sf__screen_lock_subtitle, appName))
-            .setAllowedAuthenticators(getAuthenticators())
+            .setTitle(getString(sf__screen_lock_title, viewModel.appName()))
+            .setSubtitle(getString(sf__screen_lock_subtitle, viewModel.appName()))
+            .setAllowedAuthenticators(viewModel.biometricAuthenticators())
             .setConfirmationRequired(hasFaceUnlock)
             .build()
     }
 
+    /**
+     * Returns a biometric prompt.
+     * @return The biometric prompt
+     */
     private fun getBiometricPrompt(): BiometricPrompt {
-        @Suppress("CAST_NEVER_SUCCEEDS")
         return BiometricPrompt(
             this as FragmentActivity,
             ContextCompat.getMainExecutor(this),
-            object : AuthenticationCallback() {
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                    onAuthError(errString)
-                }
-
-                override fun onAuthenticationSucceeded(result: AuthenticationResult) {
-                    super.onAuthenticationSucceeded(result)
-                    finishSuccess()
-                }
-
-                override fun onAuthenticationFailed() {
-                    super.onAuthenticationFailed()
-                    setErrorMessage(getString(sf__screen_lock_auth_failed))
-                    sendAccessibilityEvent(getString(sf__screen_lock_auth_failed))
-                }
-            })
+            BiometricAuthenticationCallback()
+        )
     }
 
-    private fun onAuthError(errString: CharSequence) {
-        var errString = errString
+    /**
+     * Handles an authentication error.
+     * @param accessibilityManager The accessibility manager to use for sending
+     * the event. This parameter is intended for testing purposes only. Defaults
+     * to the current accessibility manager
+     * @param errString The error string
+     */
+    @VisibleForTesting
+    internal fun onAuthError(
+        accessibilityManager: AccessibilityManager = getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager,
+        errString: CharSequence,
+    ) {
         val authError = getString(sf__screen_lock_auth_error)
+        val errString = errString.ifEmpty { authError }
 
-        if (errString.isEmpty()) {
-            errString = authError
-        }
         setErrorMessage(errString.toString())
-        sendAccessibilityEvent(authError)
+        sendAccessibilityEvent(
+            accessibilityManager = accessibilityManager,
+            eventText = authError,
+        )
 
-        viewModel.setupButtonVisible.value = true
+        viewModel.setupButtonAction.value = { presentBiometricAuthentication() }
         viewModel.setupButtonLabel.value = getString(sf__screen_lock_retry_button)
-        viewModel.setupButtonAction.value = { presentAuth() }
+        viewModel.setupButtonVisible.value = true
     }
 
-    private fun finishSuccess() {
+    /**
+     * Finishes the activity successfully on biometric authentication success.
+     * @param accessibilityManager The accessibility manager to use for sending
+     * the event. This parameter is intended for testing purposes only. Defaults
+     * to the current accessibility manager
+     * @param build The Android SDK build. This parameter is intended for
+     * testing purposes only. Defaults to the current Android SDK build
+     * @param screenLockManager The screen lock manager to use for
+     * authentication. This parameter is intended for testing purposes only.
+     * Defaults to the current screen lock manager
+     */
+    @VisibleForTesting
+    internal fun finishSuccess(
+        build: Int = SDK_INT,
+        accessibilityManager: AccessibilityManager = getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager,
+        screenLockManager: ScreenLockManager? = getInstance().screenLockManager as ScreenLockManager?,
+    ) {
         resetUI()
-        sendAccessibilityEvent(getString(sf__screen_lock_auth_success))
-        val screenLockManager = getInstance().screenLockManager as ScreenLockManager?
+        sendAccessibilityEvent(
+            accessibilityManager = accessibilityManager,
+            build = build,
+            eventText = getString(sf__screen_lock_auth_success),
+        )
         screenLockManager?.onUnlock()
         finish()
     }
 
-    private fun getAuthenticators(): Int {
-        // TODO: Remove when min API > 29.
-        return if (SDK_INT >= R)
-            BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-        else
-            BIOMETRIC_WEAK or DEVICE_CREDENTIAL
-    }
-
-    private fun logoutScreenLockUsers() {
-        val userAccountManager = getInstance().userAccountManager
+    /**
+     * Logs out all users requiring screen lock.
+     * @param context The application context to use for querying user
+     * preferences. This parameter is intended for testing purposes only.
+     * Defaults to the current application context.
+     * @param userAccountManager The user account manager to use for querying
+     * and logging out users. This parameter is intended for testing purposes
+     * only. Defaults to the current user account manager
+     */
+    @VisibleForTesting
+    internal fun logoutScreenLockUsers(
+        context: Context = getInstance().appContext,
+        userAccountManager: UserAccountManager = getInstance().userAccountManager,
+    ) {
         val accounts = userAccountManager.getAuthenticatedUsers()
-        val context = getInstance().appContext
 
         accounts?.forEach { account ->
             val accountPreferences = context.getSharedPreferences(
-                "$MOBILE_POLICY_PREF${account.getUserLevelFilenameSuffix()}", MODE_PRIVATE
+                "$MOBILE_POLICY_PREF${account.getUserLevelFilenameSuffix()}",
+                MODE_PRIVATE
             )
             if (accountPreferences.getBoolean(SCREEN_LOCK, false)) {
                 userAccountManager.signoutUser(account, null, true, USER_LOGOUT)
             }
         }
 
-        sendAccessibilityEvent("You are logged out.")
+        sendAccessibilityEvent(eventText = "You are logged out.")
         finish()
     }
 
-    private fun setErrorMessage(message: String?) {
+    /**
+     * Sets the error message.
+     * @param message The error message
+     */
+    @VisibleForTesting
+    internal fun setErrorMessage(message: String) {
         viewModel.logoutButtonVisible.value = true
-        viewModel.setupMessageText.value = message ?: ""
+        viewModel.setupMessageText.value = message
         viewModel.setupMessageVisible.value = true
     }
 
+    /**
+     * Resets the UI.
+     */
     private fun resetUI() {
         viewModel.logoutButtonVisible.value = false
         viewModel.setupButtonVisible.value = false
         viewModel.setupMessageVisible.value = false
     }
 
-    private fun sendAccessibilityEvent(eventText: String?) {
-        val accessibilityManager = getSystemService(ACCESSIBILITY_SERVICE) as? AccessibilityManager ?: return
+    /**
+     * Sends an accessibility event.
+     * @param accessibilityManager The accessibility manager to use for sending
+     * the event. This parameter is intended for testing purposes only. Defaults
+     * to the current accessibility manager
+     * @param build The Android SDK build. This parameter is intended for
+     * testing purposes only. Defaults to the current Android SDK build
+     * @param eventText The event text
+     */
+    @SuppressLint("NewApi")
+    @VisibleForTesting
+    internal fun sendAccessibilityEvent(
+        accessibilityManager: AccessibilityManager = getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager,
+        build: Int = SDK_INT,
+        eventText: String?,
+    ) {
         if (accessibilityManager.isEnabled) {
             accessibilityManager.sendAccessibilityEvent(
-                if (SDK_INT >= R) {
+                if (build >= R) {
                     AccessibilityEvent()
                 } else {
                     // TODO: Remove when min API > 29.
@@ -354,8 +442,8 @@ internal class ScreenLockActivity : FragmentActivity() {
                     AccessibilityEvent.obtain()
                 }.apply {
                     setEventType(TYPE_WINDOW_STATE_CHANGED)
-                    setClassName(javaClass.getName())
-                    setPackageName(this.packageName)
+                    setClassName(this@ScreenLockActivity.javaClass.getName())
+                    setPackageName(this@ScreenLockActivity::javaClass.get().packageName)
                     text.add(eventText)
                 })
         }
@@ -363,109 +451,40 @@ internal class ScreenLockActivity : FragmentActivity() {
 
     companion object {
         private const val TAG = "ScreenLockActivity"
+
+        /**
+         * An empty function.
+         */
+        internal fun noOp() {}
     }
-}
 
-@Composable
-internal fun ScreenLockView2(
-    action: () -> Unit,
-    appIcon: Painter,
-    appName: String,
-    innerPadding: PaddingValues,
-    viewModel: ScreenLockViewModel,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding),
-    ) {
+    /**
+     * A biometric authentication callback.
+     * @param activity The activity to use for authentication.  This parameter
+     * is intended for testing purposes only. Defaults to this inner class
+     * receiver
+     */
+    @VisibleForTesting
+    internal inner class BiometricAuthenticationCallback(
+        private val activity: ScreenLockActivity = this@ScreenLockActivity,
+    ) : AuthenticationCallback() {
 
-        // Log out button.
-        Button(
-            colors = ButtonColors(
-                containerColor = Transparent,
-                contentColor = colorScheme.hintTextColor,
-                disabledContainerColor = Transparent,
-                disabledContentColor = colorScheme.surfaceVariant,
-            ),
-            enabled = true,
-            contentPadding = PaddingValues(PADDING_SIZE.dp),
-            modifier = Modifier.padding(PADDING_SIZE.dp),
-            onClick = {
-                action()
-            },
-            shape = RoundedCornerShape(CORNER_RADIUS.dp),
-        ) {
-            Text(
-                color = colorScheme.primary, // TODO: Review. ECJ20260129
-                fontWeight = Normal, // TODO: Review. ECJ20260129
-                fontSize = 17.sp, // TODO: Review. ECJ20260129
-                text = stringResource(sf__logout),
+        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+            super.onAuthenticationError(errorCode, errString)
+            activity.onAuthError(
+                errString = errString
             )
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Application icon.
-        Image(
-            modifier = Modifier
-                .align(CenterHorizontally)
-                .size(150.dp),
-            contentDescription = stringResource(sf__application_icon),
-            painter = appIcon,
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // Set up message text.
-        Text(
-            fontSize = 14.sp, // TODO: Review. ECJ20260129
-            modifier = Modifier.align(CenterHorizontally),
-            text = stringResource(sf__screen_lock_setup_required, appName),
-        )
-
-        // Setup action button.
-        if (viewModel.setupButtonVisible.value) {
-            Button(
-                colors = ButtonColors(
-                    containerColor = colorScheme.tertiary,
-                    contentColor = colorScheme.tertiary,
-                    disabledContainerColor = colorScheme.surfaceVariant,
-                    disabledContentColor = colorScheme.surfaceVariant,
-                ),
-                contentPadding = PaddingValues(PADDING_SIZE.dp),
-                enabled = true,
-                onClick = {
-                    viewModel.setupButtonAction.value()
-                },
-                modifier = Modifier
-                    .align(CenterHorizontally)
-                    .padding(PADDING_SIZE.dp),
-                shape = RoundedCornerShape(CORNER_RADIUS.dp),
-            ) {
-                Text(
-                    color = colorScheme.onPrimary,
-                    fontSize = 14.sp, // TODO: Review. ECJ20260129
-                    fontWeight = Normal, // TODO: Review. ECJ20260129
-                    text = viewModel.setupButtonLabel.value,
-                )
-            }
+        override fun onAuthenticationSucceeded(result: AuthenticationResult) {
+            super.onAuthenticationSucceeded(result)
+            activity.finishSuccess()
         }
 
-        Spacer(modifier = Modifier.weight(1f))
+        override fun onAuthenticationFailed() {
+            super.onAuthenticationFailed()
+            activity.setErrorMessage(getString(sf__screen_lock_auth_failed))
+            activity.sendAccessibilityEvent(eventText = getString(sf__screen_lock_auth_failed))
+        }
     }
-}
-
-@ExcludeFromJacocoGeneratedReport
-@Preview(showBackground = true)
-@Composable
-fun ScreenLockView2Preview() {
-    val testIconPainter = painterResource(id = sf__salesforce_logo)
-    ScreenLockView2(
-        appName = "App",
-        innerPadding = Absolute(0.dp),
-        appIcon = testIconPainter,
-        viewModel = viewModel(),
-        action = {},
-    )
 }

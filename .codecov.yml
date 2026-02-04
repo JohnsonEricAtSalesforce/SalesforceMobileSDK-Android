@@ -93,6 +93,7 @@ ignore:
   - "native"
   - "test"
   - "libs/**/src/com/salesforce/androidsdk/**/util/test"
+  - "libs/**/src/com/salesforce/androidsdk/ui/components/preview"
 
 flag_management:
   default_rules: # the rules that will be followed for any flag added, generally
