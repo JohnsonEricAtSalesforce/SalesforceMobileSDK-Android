@@ -31,7 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.salesforce.androidsdk.R
+import com.salesforce.androidsdk.R.drawable.sf__salesforce_logo
 import com.salesforce.androidsdk.ui.ScreenLockActivity.Companion.noOp
 import com.salesforce.androidsdk.ui.ScreenLockViewModel
 import com.salesforce.androidsdk.ui.components.ScreenLockView
@@ -44,7 +44,7 @@ fun ScreenLockViewPreview() {
     ScreenLockView(
         appName = "App",
         innerPadding = PaddingValues.Absolute(0.dp),
-        appIcon = painterResource(id = R.drawable.sf__salesforce_logo),
+        appIcon = painterResource(id = sf__salesforce_logo),
         viewModel = ScreenLockViewModel(),
         logoutAction = ::noOp,
     )
