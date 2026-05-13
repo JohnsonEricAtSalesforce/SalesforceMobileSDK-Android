@@ -76,10 +76,6 @@ android {
         buildConfig = true
     }
 
-    kotlin {
-        jvmToolchain(17)
-    }
-
     val convertCodeCoverage: TaskProvider<JacocoReport> = tasks.register<JacocoReport>("convertedCodeCoverage") {
         group = "Coverage"
         description = "Convert coverage.ec from Firebase Test Lab to XML that is usable by CodeCov."
@@ -98,4 +94,8 @@ android {
         classDirectories.setFrom(javaTree, kotlinTree)
         executionData.setFrom(fileTree("$rootDir/firebase") { setIncludes(arrayListOf("**/coverage.ec")) })
     }
+}
+
+kotlin {
+    jvmToolchain(17)
 }

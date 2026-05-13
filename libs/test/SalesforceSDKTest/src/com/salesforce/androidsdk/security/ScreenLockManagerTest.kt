@@ -32,25 +32,25 @@ import androidx.test.filters.SmallTest
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.accounts.UserAccountManager
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_ACCOUNT_NAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_AUTH_TOKEN
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_COMMUNITY_ID
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_COMMUNITY_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_DISPLAY_NAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_EMAIL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_FIRST_NAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_IDENTITY_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_INSTANCE_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_LANGUAGE
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_LAST_NAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_LOCALE
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_LOGIN_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_ORG_ID
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_PHOTO_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_REFRESH_TOKEN
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_THUMBNAIL_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_USERNAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_USER_ID
+import com.salesforce.androidsdk.util.TEST_ACCOUNT_NAME
+import com.salesforce.androidsdk.util.TEST_AUTH_TOKEN
+import com.salesforce.androidsdk.util.TEST_COMMUNITY_ID
+import com.salesforce.androidsdk.util.TEST_COMMUNITY_URL
+import com.salesforce.androidsdk.util.TEST_DISPLAY_NAME
+import com.salesforce.androidsdk.util.TEST_EMAIL
+import com.salesforce.androidsdk.util.TEST_FIRST_NAME
+import com.salesforce.androidsdk.util.TEST_IDENTITY_URL
+import com.salesforce.androidsdk.util.TEST_INSTANCE_URL
+import com.salesforce.androidsdk.util.TEST_LANGUAGE
+import com.salesforce.androidsdk.util.TEST_LAST_NAME
+import com.salesforce.androidsdk.util.TEST_LOCALE
+import com.salesforce.androidsdk.util.TEST_LOGIN_URL
+import com.salesforce.androidsdk.util.TEST_ORG_ID
+import com.salesforce.androidsdk.util.TEST_PHOTO_URL
+import com.salesforce.androidsdk.util.TEST_REFRESH_TOKEN
+import com.salesforce.androidsdk.util.TEST_THUMBNAIL_URL
+import com.salesforce.androidsdk.util.TEST_USERNAME
+import com.salesforce.androidsdk.util.TEST_USER_ID
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.security.ScreenLockManager.Companion.MOBILE_POLICY_PREF
 import com.salesforce.androidsdk.security.ScreenLockManager.Companion.SCREEN_LOCK
@@ -69,7 +69,7 @@ class ScreenLockManagerTest {
     private val ctx = SalesforceSDKManager.getInstance().appContext
     private val globalPrefs = ctx.getSharedPreferences(MOBILE_POLICY_PREF, Context.MODE_PRIVATE)
     private val accountPrefs = ctx.getSharedPreferences(MOBILE_POLICY_PREF
-                + userAccount.userLevelFilenameSuffix, Context.MODE_PRIVATE
+                + userAccount.getUserLevelFilenameSuffix(), Context.MODE_PRIVATE
     )
 
     @Before
@@ -184,10 +184,10 @@ class ScreenLockManagerTest {
     @Test
     fun testCleanUp() {
         UserAccountManager.getInstance().createAccount(userAccount);
-        val storedUser = SalesforceSDKManager.getInstance().userAccountManager.authenticatedUsers[0]
+        val storedUser = SalesforceSDKManager.getInstance().userAccountManager.authenticatedUsers!![0]
         val storedUserPrefs = ctx.getSharedPreferences(
             (MOBILE_POLICY_PREF
-                    + storedUser.userLevelFilenameSuffix), Context.MODE_PRIVATE
+                    + storedUser.getUserLevelFilenameSuffix()), Context.MODE_PRIVATE
         )
         screenLockManager.storeMobilePolicy(storedUser, true, 60)
         screenLockManager.cleanUp(storedUser)

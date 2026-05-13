@@ -62,9 +62,9 @@ fun OAuthConfigurationView() {
     } else {
         BootConfig.getBootConfig(LocalContext.current)
     }
-    val consumerKey = bootConfig?.remoteAccessConsumerKey
-    val redirect = bootConfig?.oauthRedirectURI
-    val scopes = bootConfig?.oauthScopes.toScopeParameter()
+    val consumerKey = bootConfig?.getRemoteAccessConsumerKey()
+    val redirect = bootConfig?.getOauthRedirectURI()
+    val scopes = bootConfig?.getOauthScopes().toScopeParameter()
 
     ExpandableCard(
         title = CARD_TITLE,

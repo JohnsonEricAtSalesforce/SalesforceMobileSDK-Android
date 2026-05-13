@@ -69,7 +69,7 @@ class SyncsConfig private constructor(str: String?) {
      */
     constructor(ctx: Context?, resourceId: Int) : this(
         ResourceReaderHelper.readResourceFile(
-            ctx,
+            ctx ?: return,
             resourceId
         )
     )
@@ -81,8 +81,8 @@ class SyncsConfig private constructor(str: String?) {
      */
     constructor(ctx: Context?, assetPath: String?) : this(
         ResourceReaderHelper.readAssetFile(
-            ctx,
-            assetPath
+            ctx ?: return,
+            assetPath ?: ""
         )
     )
 

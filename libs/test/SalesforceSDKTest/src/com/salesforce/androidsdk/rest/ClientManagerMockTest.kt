@@ -96,8 +96,8 @@ class ClientManagerMockTest {
             every { body } returns responseBody
         }
 
-        mockkObject(HttpAccess.DEFAULT)
-        every { HttpAccess.DEFAULT.okHttpClient } returns mockk<OkHttpClient> {
+        mockkObject(HttpAccess.DEFAULT!!)
+        every { HttpAccess.DEFAULT!!.okHttpClient } returns mockk<OkHttpClient> {
             every { newCall(any()) } returns mockk<Call> {
                 every { execute() } returns refreshResponse
             }
@@ -120,7 +120,7 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -158,7 +158,7 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -188,7 +188,7 @@ class ClientManagerMockTest {
     @Test
     fun testGetNewAuthToken_NoAccounts() {
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns emptyArray<Account>()
+            every { getAccounts() } returns emptyArray<Account>()
         }
         val authTokenProvider = ClientManager.AccMgrAuthTokenProvider(
             mockClientManager,
@@ -213,7 +213,7 @@ class ClientManagerMockTest {
             every { refreshToken } returns "not-matching"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -240,7 +240,7 @@ class ClientManagerMockTest {
             every { refreshToken } returns "not-matching"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -276,7 +276,7 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount, mockAccount2)
+            every { getAccounts() } returns arrayOf(mockAccount, mockAccount2)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -305,7 +305,7 @@ class ClientManagerMockTest {
 
     @Test
     fun testGetNewAuthToken_Revoked() {
-        every { HttpAccess.DEFAULT.okHttpClient } returns mockk<OkHttpClient> {
+        every { HttpAccess.DEFAULT!!.okHttpClient } returns mockk<OkHttpClient> {
             every { newCall(any()) } returns mockk<Call> {
                 every { execute() } returns mockk<Response>(relaxed = true) {
                     every { isSuccessful } returns false
@@ -322,7 +322,7 @@ class ClientManagerMockTest {
 
         // Use the real clientManager instead of a full mock because revokedTokenShouldLogout is private.
         val clientManagerSpy = spyk(clientManager)
-        every { clientManagerSpy.accounts } returns arrayOf(mockAccount)
+        every { clientManagerSpy.getAccounts() } returns arrayOf(mockAccount)
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
         every { mockUserAccountManager.updateAccount(mockAccount, any()) } returns mockk()
@@ -367,7 +367,7 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount, mockAccount2)
+            every { getAccounts() } returns arrayOf(mockAccount, mockAccount2)
         }
         // The account that we are not refreshing for is the current account.
         every { mockUserAccountManager.currentUser } returns mockUser2
@@ -403,7 +403,7 @@ class ClientManagerMockTest {
      */
     @Test
     fun testGetNewAuthToken_Multiuser_RevokeNonCurrentUser() {
-        every { HttpAccess.DEFAULT.okHttpClient } returns mockk<OkHttpClient> {
+        every { HttpAccess.DEFAULT!!.okHttpClient } returns mockk<OkHttpClient> {
             every { newCall(any()) } returns mockk<Call> {
                 every { execute() } returns mockk<Response>(relaxed = true) {
                     every { isSuccessful } returns false
@@ -433,7 +433,7 @@ class ClientManagerMockTest {
         every { mockUserAccountManager.updateAccount(mockAccount2, any()) } returns mockk()
         // Use the real clientManager instead of a full mock because revokedTokenShouldLogout is private.
         val clientManagerSpy = spyk(clientManager)
-        every { clientManagerSpy.accounts } returns arrayOf(mockAccount, mockAccount2)
+        every { clientManagerSpy.getAccounts() } returns arrayOf(mockAccount, mockAccount2)
         val authTokenProvider = ClientManager.AccMgrAuthTokenProvider(
             clientManagerSpy,
             "https://login.salesforce.com",

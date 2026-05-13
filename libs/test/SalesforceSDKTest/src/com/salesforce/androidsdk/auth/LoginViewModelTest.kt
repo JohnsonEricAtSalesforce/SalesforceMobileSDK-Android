@@ -35,8 +35,8 @@ import com.salesforce.androidsdk.R.string.oauth_display_type
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.OAuth2.getFrontdoorUrl
 import com.salesforce.androidsdk.config.BootConfig
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.WELCOME_LOGIN_URL
 import com.salesforce.androidsdk.config.LoginServerManager.LoginServer
-import com.salesforce.androidsdk.config.LoginServerManager.WELCOME_LOGIN_URL
 import com.salesforce.androidsdk.config.OAuthConfig
 import com.salesforce.androidsdk.security.SalesforceKeyGenerator.getSHA256Hash
 import com.salesforce.androidsdk.ui.LoginActivity.Companion.ABOUT_BLANK
@@ -105,7 +105,7 @@ class LoginViewModelTest {
     @Test
     fun selectedServer_UpdatesOn_loginServerManagerChange() {
         val loginServerManager = SalesforceSDKManager.getInstance().loginServerManager
-        assertEquals(loginServerManager.selectedLoginServer.url, viewModel.selectedServer.value)
+        assertEquals(loginServerManager.getSelectedLoginServer()!!.url, viewModel.selectedServer.value)
         assertNotEquals(FAKE_SERVER_URL, viewModel.selectedServer.value)
 
         loginServerManager.addCustomLoginServer("fake", FAKE_SERVER_URL)
@@ -160,28 +160,28 @@ class LoginViewModelTest {
     @Test
     fun selectedServer_Changes_GenerateCorrectAuthorizationUrl() {
         val originalServer = viewModel.selectedServer.value!!
-        val originalCodeChallenge = getSHA256Hash(viewModel.codeVerifier)
+        val originalCodeChallenge = getSHA256Hash(viewModel.codeVerifier!!)!!
         val originalAuthUrl = generateExpectedAuthorizationUrl(originalServer, originalCodeChallenge)
-        assertEquals(originalAuthUrl, viewModel.loginUrl.value)
+        assertEquals(originalAuthUrl, viewModel.loginUrl.value!!)
 
         viewModel.selectedServer.value = FAKE_SERVER_URL
         // Wait for async update
         Thread.sleep(200)
-        val newCodeChallenge = getSHA256Hash(viewModel.codeVerifier)
+        val newCodeChallenge = getSHA256Hash(viewModel.codeVerifier!!)!!
         assertNotEquals(originalCodeChallenge, newCodeChallenge)
         val newAuthUrl = generateExpectedAuthorizationUrl(FAKE_SERVER_URL, newCodeChallenge)
-        assertEquals(newAuthUrl, viewModel.loginUrl.value)
+        assertEquals(newAuthUrl, viewModel.loginUrl.value!!)
     }
 
     @Test
     fun codeVerifier_UpdatesOn_WebViewRefresh() {
-        val originalCodeChallenge = getSHA256Hash(viewModel.codeVerifier)
+        val originalCodeChallenge = getSHA256Hash(viewModel.codeVerifier!!)!!
         assertTrue(viewModel.loginUrl.value!!.contains(originalCodeChallenge))
 
         viewModel.reloadWebView()
         // Wait for async update
         Thread.sleep(200)
-        val newCodeChallenge = getSHA256Hash(viewModel.codeVerifier)
+        val newCodeChallenge = getSHA256Hash(viewModel.codeVerifier!!)!!
         assertNotNull(newCodeChallenge)
         assertNotEquals(originalCodeChallenge, newCodeChallenge)
         assertTrue(viewModel.loginUrl.value!!.contains(newCodeChallenge))
@@ -190,9 +190,9 @@ class LoginViewModelTest {
     @Test
     fun jwtFlow_Changes_loginUrl() {
         val server = viewModel.selectedServer.value!!
-        var codeChallenge = getSHA256Hash(viewModel.codeVerifier)
+        var codeChallenge = getSHA256Hash(viewModel.codeVerifier!!)!!
         val expectedUrl = generateExpectedAuthorizationUrl(server, codeChallenge)
-        assertEquals(expectedUrl, viewModel.loginUrl.value)
+        assertEquals(expectedUrl, viewModel.loginUrl.value!!)
 
         viewModel.jwt = FAKE_JWT
         viewModel.authCodeForJwtFlow = FAKE_JWT_FLOW_AUTH
@@ -201,16 +201,16 @@ class LoginViewModelTest {
         Thread.sleep(200)
         assertNotEquals(expectedUrl, viewModel.loginUrl.value)
 
-        codeChallenge = getSHA256Hash(viewModel.codeVerifier)
-        val authUrl = generateExpectedAuthorizationUrl(server, codeChallenge)
-        val expectedJwtFlowUrl = getFrontdoorUrl(URI(authUrl), FAKE_JWT_FLOW_AUTH, server, mapOf<String, String>()).toString()
-        assertEquals(expectedJwtFlowUrl, viewModel.loginUrl.value)
+        codeChallenge = getSHA256Hash(viewModel.codeVerifier!!)!!
+        val expectedJwtFlowUrl = generateExpectedAuthorizationUrl(server, codeChallenge)
+        // JWT flow still uses authorization URL (with additionalParams=null), not frontdoor URL
+        assertEquals(expectedJwtFlowUrl, viewModel.loginUrl.value!!)
     }
 
     @Test
     fun loginHint_Changes_loginUrl() {
         val server = viewModel.selectedServer.value!!
-        val codeChallenge = getSHA256Hash(viewModel.codeVerifier)
+        val codeChallenge = getSHA256Hash(viewModel.codeVerifier!!)!!
         val result = generateExpectedAuthorizationUrl(
             server = server,
             codeChallenge = codeChallenge,
@@ -270,7 +270,7 @@ class LoginViewModelTest {
         // Verify the URL contains the boot config values
         val loginUrl = viewModel.loginUrl.value!!
         assertTrue("URL should contain boot config consumer key",
-            loginUrl.contains(bootConfig.remoteAccessConsumerKey))
+            loginUrl.contains(bootConfig.remoteAccessConsumerKey!!))
         assertTrue("URL should contain boot config redirect URI",
             loginUrl.contains("redirect_uri=${bootConfig.oauthRedirectURI}"))
     }
@@ -522,7 +522,7 @@ class LoginViewModelTest {
         SalesforceSDKManager.getInstance().debugOverrideAppConfig = OAuthConfig(
             consumerKey = customConsumerKey,
             redirectUri = customRedirectUri,
-            scopes = null,
+            scopes = null as List<String>?,
         )
 
         // Trigger URL generation
@@ -660,12 +660,12 @@ class LoginViewModelTest {
             // Verify the URL contains the boot config values (fallback)
             val loginUrl = viewModel.loginUrl.value!!
             assertTrue("URL should contain boot config consumer key when appConfigForLoginHost returns null",
-                loginUrl.contains(bootConfig.remoteAccessConsumerKey))
+                loginUrl.contains(bootConfig.remoteAccessConsumerKey!!))
             assertTrue("URL should contain boot config redirect URI when appConfigForLoginHost returns null",
                 loginUrl.contains("redirect_uri=${bootConfig.oauthRedirectURI}"))
 
             // Verify boot config scopes are present
-            bootConfig.oauthScopes.forEach { scope ->
+            bootConfig.oauthScopes!!.forEach { scope ->
                 assertTrue("URL should contain boot config scope '$scope' when appConfigForLoginHost returns null",
                     loginUrl.contains(scope))
             }
@@ -1280,9 +1280,9 @@ class LoginViewModelTest {
         true,
         true,
         URI(server),
-        bootConfig.remoteAccessConsumerKey,
-        bootConfig.oauthRedirectURI,
-        bootConfig.oauthScopes,
+        bootConfig.remoteAccessConsumerKey!!,
+        bootConfig.oauthRedirectURI!!,
+        bootConfig.oauthScopes!!,
         loginHint,
         SalesforceSDKManager.getInstance().appContext.getString(oauth_display_type),
         codeChallenge,

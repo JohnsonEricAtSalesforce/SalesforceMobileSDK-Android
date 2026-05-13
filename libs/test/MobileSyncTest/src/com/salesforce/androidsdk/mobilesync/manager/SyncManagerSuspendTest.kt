@@ -49,7 +49,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 @LargeTest
 class SyncManagerSuspendTest : SyncManagerTestCase() {
-    private lateinit var idToFields: MutableMap<String, Map<String, Any>>
+    private lateinit var idToFields: Map<String, Map<String, Any>>
 
     @Before
     @Throws(Exception::class)

@@ -38,12 +38,7 @@ import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.HttpAccess.NoNetworkException
 import com.salesforce.androidsdk.config.BootConfig
-import com.salesforce.androidsdk.config.BootConfig.getBootConfig
-import com.salesforce.androidsdk.config.BootConfig.isAbsoluteUrl
-import com.salesforce.androidsdk.config.BootConfig.validateBootConfig
-import com.salesforce.androidsdk.config.LoginServerManager.PRODUCTION_LOGIN_URL
-import com.salesforce.androidsdk.config.LoginServerManager.SANDBOX_LOGIN_URL
-import com.salesforce.androidsdk.config.LoginServerManager.WELCOME_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager
 import com.salesforce.androidsdk.phonegap.app.SalesforceHybridSDKManager
 import com.salesforce.androidsdk.phonegap.ui.SalesforceWebViewClientHelper.getAppHomeUrl
 import com.salesforce.androidsdk.phonegap.ui.SalesforceWebViewClientHelper.hasCachedAppHome
@@ -55,7 +50,6 @@ import com.salesforce.androidsdk.rest.ClientManager
 import com.salesforce.androidsdk.rest.RestClient
 import com.salesforce.androidsdk.rest.RestClient.AsyncRequestCallback
 import com.salesforce.androidsdk.rest.RestRequest
-import com.salesforce.androidsdk.rest.RestRequest.getCheapRequest
 import com.salesforce.androidsdk.rest.RestResponse
 import com.salesforce.androidsdk.ui.SalesforceActivityDelegate
 import com.salesforce.androidsdk.ui.SalesforceActivityInterface
@@ -122,7 +116,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
         init()
 
         // Get the boot configuration
-        bootConfig = getBootConfig(this)
+        bootConfig = BootConfig.getBootConfig(this)
 
         // Get the client manager
         clientManager = buildClientManager()
@@ -198,7 +192,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
 
             // Logged in
             else -> {
-                salesforceCookieManager.setCookies(UserAccountManager.getInstance().currentUser)
+                salesforceCookieManager.setCookies(UserAccountManager.getInstance().currentUser!!)
 
                 when {
                     // Web app never loaded
@@ -219,7 +213,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
         val unauthenticatedStartPage = unauthenticatedStartPage
 
         runCatching {
-            validateBootConfig(bootConfig)
+            BootConfig.validateBootConfig(bootConfig)
 
             when {
                 // Need to be authenticated
@@ -240,7 +234,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
 
                 // Does not need to be authenticated
                 else ->
-                    when (bootConfig?.isLocal) {
+                    when (bootConfig?.isLocal()) {
                         // Local
                         true -> {
                             i(TAG, "onResumeNotLoggedIn - should not authenticate/local start page - loading web app")
@@ -275,7 +269,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
             setupUserSyncsFromDefaultConfig()
         }
 
-        when (bootConfig?.isLocal) {
+        when (bootConfig?.isLocal()) {
             // Local
             true -> {
                 i(TAG, "onResumeLoggedInNotLoaded - local start page - loading web app")
@@ -287,7 +281,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
                 // Online
                 SalesforceSDKManager.getInstance().hasNetwork() -> {
                     i(TAG, "onResumeLoggedInNotLoaded - remote start page/online - loading web app")
-                    bootConfig?.startPage?.let { startPage ->
+                    bootConfig?.getStartPage()?.let { startPage ->
                         loadRemoteStartPage(startPage)
                     }
                 }
@@ -337,7 +331,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
     /** The unauthenticated start page from the boot configuration */
     @Suppress("MemberVisibilityCanBePrivate")
     protected open val unauthenticatedStartPage
-        get() = bootConfig?.unauthenticatedStartPage
+        get() = bootConfig?.getUnauthenticatedStartPage()
 
     fun logout(callbackContext: CallbackContext?) {
         i(TAG, "logout called")
@@ -384,7 +378,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
                      * cause the web view to redirect to the web login
                      */
                     restClient?.sendAsync(
-                        getCheapRequest(VERSION_NUMBER), object : AsyncRequestCallback {
+                        RestRequest.getCheapRequest(VERSION_NUMBER), object : AsyncRequestCallback {
                             override fun onSuccess(
                                 request: RestRequest,
                                 response: RestResponse
@@ -448,7 +442,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
         }
 
         restClient?.sendAsync(
-            getCheapRequest(VERSION_NUMBER), object : AsyncRequestCallback {
+            RestRequest.getCheapRequest(VERSION_NUMBER), object : AsyncRequestCallback {
 
                 override fun onSuccess(
                     request: RestRequest,
@@ -481,8 +475,8 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
      */
     @Suppress("MemberVisibilityCanBePrivate")
     fun loadLocalStartPage() {
-        assert(bootConfig?.isLocal == true)
-        val startPage = bootConfig?.startPage ?: return
+        assert(bootConfig?.isLocal() == true)
+        val startPage = bootConfig?.getStartPage() ?: return
 
         i(TAG, "loadLocalStartPage called - loading! - $startPage")
 
@@ -495,7 +489,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
      */
     @Suppress("unused")
     fun loadRemoteStartPage() =
-        bootConfig?.startPage?.let { startPage ->
+        bootConfig?.getStartPage()?.let { startPage ->
             loadRemoteStartPage(startPage)
         }
 
@@ -506,10 +500,10 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
     private fun loadRemoteStartPage(
         startPageUrl: String
     ) {
-        assert(bootConfig?.isLocal != true)
-        val clientInfo = restClient?.clientInfo
+        assert(bootConfig?.isLocal() != true)
+        val clientInfo = restClient?.getClientInfo()
         val url = when {
-            isAbsoluteUrl(startPageUrl) && clientInfo != null -> {
+            BootConfig.isAbsoluteUrl(startPageUrl) && clientInfo != null -> {
                 startPageUrl
             }
             else -> {
@@ -535,7 +529,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
      */
     @Suppress("MemberVisibilityCanBePrivate")
     fun loadErrorPage() {
-        val errorPage = bootConfig?.errorPage ?: return
+        val errorPage = bootConfig?.getErrorPage() ?: return
         i(TAG, "getErrorPageUrl called - local error page: $errorPage")
         loadUrl("file:///android_asset/www/$errorPage")
     }
@@ -554,7 +548,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
         restClient?.let { restClient ->
             runCatching {
                 val currentClient = clientManager?.peekRestClient() ?: return
-                if (currentClient.clientInfo.userId != restClient.clientInfo?.userId) {
+                if (currentClient.getClientInfo().userId != restClient.getClientInfo().userId) {
                     recreate()
                 }
             }.onFailure {
@@ -570,11 +564,11 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
                     val loginServer = SalesforceHybridSDKManager
                         .getInstance()
                         .loginServerManager
-                        .selectedLoginServer
+                        .getSelectedLoginServer()
                         ?.url
                         ?.trim { it <= ' ' } ?: return@withTimeout
 
-                    if (loginServer == PRODUCTION_LOGIN_URL || loginServer == WELCOME_LOGIN_URL || loginServer == SANDBOX_LOGIN_URL || !isHttpsUrl(loginServer) || loginServer.toHttpUrlOrNull() == null) {
+                    if (loginServer == LoginServerManager.PRODUCTION_LOGIN_URL || loginServer == LoginServerManager.WELCOME_LOGIN_URL || loginServer == LoginServerManager.SANDBOX_LOGIN_URL || !isHttpsUrl(loginServer) || loginServer.toHttpUrlOrNull() == null) {
                         return@withTimeout
                     }
 
@@ -592,7 +586,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
             if (intent.action == ClientManager.ACCESS_TOKEN_REFRESH_INTENT
                 || intent.action == ClientManager.INSTANCE_URL_UPDATE_INTENT) {
                 d(TAG, "TokenRefreshReceiver onReceive")
-                salesforceCookieManager.setCookies(UserAccountManager.getInstance().currentUser)
+                salesforceCookieManager.setCookies(UserAccountManager.getInstance().currentUser!!)
             }
         }
     }

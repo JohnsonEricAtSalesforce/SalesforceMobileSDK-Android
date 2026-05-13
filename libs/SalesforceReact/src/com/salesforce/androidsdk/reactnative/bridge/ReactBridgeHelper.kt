@@ -1,0 +1,159 @@
+/*
+ * Copyright (c) 2015-present, salesforce.com, inc.
+ * All rights reserved.
+ * Redistribution and use of this software in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
+ * - Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * - Neither the name of salesforce.com, inc. nor the names of its contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission of salesforce.com, inc.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.salesforce.androidsdk.reactnative.bridge
+
+import com.facebook.react.bridge.Callback
+import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.ReadableType
+import org.json.JSONArray
+import org.json.JSONObject
+
+object ReactBridgeHelper {
+
+    @JvmStatic
+    fun invoke(callback: Callback, json: JSONObject?) {
+        // XXX it would be better to user a NativeMap
+        //     for now we serialize the object and do a JSON.parse(result) on the javascript side
+        callback.invoke(json?.toString())
+    }
+
+    @JvmStatic
+    fun invoke(callback: Callback, json: JSONArray?) {
+        // XXX it would be better to user a NativeArray
+        //     for now we serialize the object and do a JSON.parse(result) on the javascript side
+        callback.invoke(json?.toString())
+    }
+
+    @JvmStatic
+    fun invoke(callback: Callback, value: String) {
+        // XXX we need to turn "xyz" into "\"xyz\"" so that JSON.parse() returns "xyz"
+        callback.invoke("\"$value\"")
+    }
+
+    @JvmStatic
+    fun invoke(callback: Callback, value: Boolean) {
+        // XXX we need to turn true|false into "true"|"false" so that JSON.parse() returns true|false
+        callback.invoke("$value")
+    }
+
+    @JvmStatic
+    fun invoke(callback: Callback, value: Int) {
+        // XXX we need to turn 123 into "123" so that JSON.parse() returns 123
+        callback.invoke("$value")
+    }
+
+    @JvmStatic
+    fun toJavaMap(map: ReadableMap?): Map<String, Any?> {
+        val result = HashMap<String, Any?>()
+        if (map == null) return result
+
+        val iterator = map.keySetIterator()
+        while (iterator.hasNextKey()) {
+            val key = iterator.nextKey()
+            when (map.getType(key)) {
+                ReadableType.Null -> result[key] = null
+                ReadableType.Boolean -> result[key] = map.getBoolean(key)
+                ReadableType.Number -> result[key] = map.getDouble(key) // XXX what about integers
+                ReadableType.String -> result[key] = map.getString(key)
+                ReadableType.Map -> result[key] = toJavaMap(map.getMap(key))
+                ReadableType.Array -> result[key] = toJavaList(map.getArray(key))
+            }
+        }
+        return result
+    }
+
+    @JvmStatic
+    fun toJavaStringStringMap(map: ReadableMap?): Map<String, String> {
+        val result = HashMap<String, String>()
+        if (map == null) return result
+
+        val iterator = map.keySetIterator()
+        while (iterator.hasNextKey()) {
+            val key = iterator.nextKey()
+            when (map.getType(key)) {
+                ReadableType.String -> result[key] = map.getString(key) ?: ""
+                else -> {
+                    // Only expected strings
+                }
+            }
+        }
+        return result
+    }
+
+    @JvmStatic
+    fun toJavaStringMapMap(map: ReadableMap?): Map<String, Map<String, String>> {
+        val result = HashMap<String, Map<String, String>>()
+        if (map == null) return result
+
+        val iterator = map.keySetIterator()
+        while (iterator.hasNextKey()) {
+            val key = iterator.nextKey()
+            when (map.getType(key)) {
+                ReadableType.Map -> result[key] = toJavaStringStringMap(map.getMap(key))
+                else -> {
+                    // Only expected maps
+                }
+            }
+        }
+        return result
+    }
+
+    @JvmStatic
+    fun toJavaStringList(array: ReadableArray?): List<String> {
+        val result = ArrayList<String>()
+        if (array == null) return result
+
+        for (i in 0 until array.size()) {
+            when (array.getType(i)) {
+                ReadableType.String -> result.add(i, array.getString(i) ?: "")
+                else -> {
+                    // Only expected strings
+                }
+            }
+        }
+        return result
+    }
+
+    @JvmStatic
+    fun toJavaList(array: ReadableArray?): List<Any?> {
+        val result = ArrayList<Any?>()
+        if (array == null) return result
+
+        for (i in 0 until array.size()) {
+            when (array.getType(i)) {
+                ReadableType.Null -> result.add(i, null)
+                ReadableType.Boolean -> result.add(i, array.getBoolean(i))
+                ReadableType.Number -> result.add(i, array.getDouble(i)) // XXX what about integers
+                ReadableType.String -> result.add(i, array.getString(i))
+                ReadableType.Map -> result.add(i, toJavaMap(array.getMap(i)))
+                ReadableType.Array -> result.add(i, toJavaList(array.getArray(i)))
+            }
+        }
+        return result
+    }
+}

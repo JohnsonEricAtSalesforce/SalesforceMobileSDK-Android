@@ -102,3 +102,13 @@ android {
         executionData.setFrom(fileTree("$rootDir/firebase") { setIncludes(arrayListOf("**/coverage.ec")) })
     }
 }
+
+kotlin {
+    jvmToolchain(17)
+}
+
+// Set Java compatibility to match Kotlin JVM target
+tasks.withType<JavaCompile>().configureEach {
+    sourceCompatibility = "17"
+    targetCompatibility = "17"
+}

@@ -164,7 +164,7 @@ class UserAccountBuilder private constructor() {
             .contentDomain(userAccount.contentDomain)
             .contentSid(userAccount.contentSid)
             .csrfToken(userAccount.csrfToken)
-            .nativeLogin(userAccount.nativeLogin)
+            .nativeLogin(userAccount.nativeLogin ?: false)
             .language(userAccount.language)
             .locale(userAccount.locale)
             .cookieClientSrc(userAccount.cookieClientSrc)

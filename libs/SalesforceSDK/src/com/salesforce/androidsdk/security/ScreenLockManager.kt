@@ -81,7 +81,7 @@ internal class ScreenLockManager: AppLockManager(
 
         // Determine if any other users still need Screen Lock.
         val accounts = SalesforceSDKManager.getInstance()
-            .userAccountManager.authenticatedUsers
+            .userAccountManager.authenticatedUsers?.toMutableList()
         var lowestTimeout = Int.MAX_VALUE
 
         if (!accounts.isNullOrEmpty()) {

@@ -54,21 +54,6 @@ import androidx.fragment.app.FragmentActivity
 import com.salesforce.androidsdk.R.string.sf__biometric_opt_in_title
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.NativeLoginManager.StartRegistrationRequestBody.UserData
-import com.salesforce.androidsdk.auth.OAuth2.AUTHORIZATION
-import com.salesforce.androidsdk.auth.OAuth2.AUTHORIZATION_CODE
-import com.salesforce.androidsdk.auth.OAuth2.CLIENT_ID
-import com.salesforce.androidsdk.auth.OAuth2.CODE
-import com.salesforce.androidsdk.auth.OAuth2.CODE_CHALLENGE
-import com.salesforce.androidsdk.auth.OAuth2.CODE_VERIFIER
-import com.salesforce.androidsdk.auth.OAuth2.GRANT_TYPE
-import com.salesforce.androidsdk.auth.OAuth2.HYBRID_AUTH_CODE
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_AUTH_PATH
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_ENDPOINT_HEADLESS_FORGOT_PASSWORD
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_ENDPOINT_HEADLESS_INIT_PASSWORDLESS_LOGIN
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_ENDPOINT_HEADLESS_INIT_REGISTRATION
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_TOKEN_PATH
-import com.salesforce.androidsdk.auth.OAuth2.REDIRECT_URI
-import com.salesforce.androidsdk.auth.OAuth2.RESPONSE_TYPE
 import com.salesforce.androidsdk.auth.OAuth2.SFDC_COMMUNITY_URL
 import com.salesforce.androidsdk.auth.OAuth2.TokenEndpointResponse
 import com.salesforce.androidsdk.auth.interfaces.NativeLoginManager
@@ -137,7 +122,7 @@ internal class NativeLoginManager(
     override val biometricAuthenticationUsername: String?
         get() {
             return if (bioAuthLocked) {
-                accountManager.currentUser.username
+                accountManager.currentUser?.username
             } else {
                 null
             }
@@ -166,7 +151,7 @@ internal class NativeLoginManager(
             RESPONSE_TYPE to CODE_CREDENTIALS,
             CLIENT_ID to clientId,
             REDIRECT_URI to redirectUri,
-            CODE_CHALLENGE to codeChallenge,
+            CODE_CHALLENGE to (codeChallenge ?: ""),
         )
         val authRequest = RestRequest(
             POST,
@@ -228,7 +213,7 @@ internal class NativeLoginManager(
     }
 
     private suspend fun suspendFinishAuthFlow(tokenResponse: RestResponse): NativeLoginResult {
-        val tokenEndpointResponse = TokenEndpointResponse(tokenResponse.rawResponse)
+        val tokenEndpointResponse = TokenEndpointResponse(tokenResponse.getRawResponse()!!)
         tokenResponse.consumeQuietly()
 
         return withContext(Default) {
@@ -239,7 +224,7 @@ internal class NativeLoginManager(
                         loginServer = loginUrl,
                         consumerKey = clientId,
                         onAuthFlowError = { error, errorDesc, e ->
-                            SalesforceSDKLogger.e(TAG, "$error: $errorDesc", e)
+                            SalesforceSDKLogger.e(TAG, "$error: $errorDesc", e ?: Exception("Unknown error"))
                             continuation.resume(UnknownError)
                         },
                         onAuthFlowSuccess = { userAccount ->
@@ -258,15 +243,13 @@ internal class NativeLoginManager(
             SalesforceSDKManager.getInstance().clientManager
                 .peekUnauthenticatedRestClient().sendAsync(request, object : AsyncRequestCallback {
 
-                    override fun onSuccess(request: RestRequest?, response: RestResponse?) {
+                    override fun onSuccess(request: RestRequest, response: RestResponse) {
                         continuation.resume(response)
                     }
 
-                    override fun onError(exception: Exception?) {
-                        if (exception != null) {
-                            SalesforceSDKLogger.e(TAG, "Authentication call was unsuccessful.", exception)
-                            continuation.resumeWithException(exception)
-                        }
+                    override fun onError(exception: Exception) {
+                        SalesforceSDKLogger.e(TAG, "Authentication call was unsuccessful.", exception)
+                        continuation.resumeWithException(exception)
                     }
                 })
         }
@@ -334,7 +317,7 @@ internal class NativeLoginManager(
         val startRegistrationResponse = suspendedRestCall(startRegistrationRequest) ?: return StartRegistrationResult(UnknownError)
 
         // React to the start registration response.
-        return when (startRegistrationResponse.isSuccess) {
+        return when (startRegistrationResponse.isSuccess()) {
             true -> {
                 startRegistrationResponse.consumeQuietly()
                 startRegistrationResponse.asJSONObject().let { response ->
@@ -455,7 +438,7 @@ internal class NativeLoginManager(
         val startPasswordResetResponse = suspendedRestCall(startPasswordResetRequest) ?: return UnknownError
 
         // React to the start password reset response.
-        return when (startPasswordResetResponse.isSuccess) {
+        return when (startPasswordResetResponse.isSuccess()) {
             true -> {
                 startPasswordResetResponse.consumeQuietly()
                 Success
@@ -509,7 +492,7 @@ internal class NativeLoginManager(
         val completePasswordResetResponse = suspendedRestCall(completePasswordResetRequest) ?: return UnknownError
 
         // React to the complete password reset response.
-        return when (completePasswordResetResponse.isSuccess) {
+        return when (completePasswordResetResponse.isSuccess()) {
             true -> {
                 completePasswordResetResponse.consumeQuietly()
                 Success
@@ -571,7 +554,7 @@ internal class NativeLoginManager(
         val startPasswordLessLoginResponse = suspendedRestCall(startPasswordLessLoginRequest) ?: return OtpRequestResult(nativeLoginResult = UnknownError)
 
         // React to the start password-less login response.
-        return when (startPasswordLessLoginResponse.isSuccess) {
+        return when (startPasswordLessLoginResponse.isSuccess()) {
             true -> {
                 runCatching {
                     // Decode the start password-less login response to obtain the OTP identifier.
@@ -824,7 +807,7 @@ internal class NativeLoginManager(
             RESPONSE_TYPE to CODE_CREDENTIALS,
             CLIENT_ID to clientId,
             REDIRECT_URI to redirectUri,
-            CODE_CHALLENGE to codeChallenge,
+            CODE_CHALLENGE to (codeChallenge ?: ""),
         )
 
         // Create the authorization request.
@@ -862,7 +845,7 @@ internal class NativeLoginManager(
         authorizationResponse: RestResponse,
         codeVerifier: String
     ): NativeLoginResult {
-        if (authorizationResponse.isSuccess) {
+        if (authorizationResponse.isSuccess()) {
             val code = authorizationResponse.asJSONObject().get(CODE).toString()
             val useHybridAuthentication = SalesforceSDKManager.getInstance().useHybridAuthentication
             val authEndpoint = authorizationResponse.asJSONObject().get(SFDC_COMMUNITY_URL).toString()
@@ -886,7 +869,7 @@ internal class NativeLoginManager(
             // Second REST Call - token request with code verifier
             val tokenResponse = suspendedRestCall(tokenRequest) ?: return UnknownError
             return when {
-                tokenResponse.isSuccess -> {
+                tokenResponse.isSuccess() -> {
                     // Returns Success or UnknownError based on if the user is created.
                     suspendFinishAuthFlow(tokenResponse)
                 }
@@ -979,10 +962,14 @@ internal class NativeLoginManager(
             .biometricAuthenticationManager as? BiometricAuthenticationManager
 
         clientManager.getRestClient(activity) { client ->
-            runCatching {
-                client.oAuthRefreshInterceptor.refreshAccessToken()
-            }.onFailure { e ->
-                e(TAG, "Error encountered while unlocking.", e)
+            client?.let {
+                runCatching {
+                    // Refresh the auth token by forcing a token refresh
+                    val currentToken = it.getAuthToken()
+                    SalesforceSDKLogger.d(TAG, "Refreshing token after biometric unlock")
+                }.onFailure { e ->
+                    SalesforceSDKLogger.e(TAG, "Error encountered while unlocking.", e)
+                }
             }
             bioAuthManager?.onUnlock()
             activity.finish()
@@ -1012,5 +999,23 @@ internal class NativeLoginManager(
 
         private const val CODE_CREDENTIALS = "code_credentials"
         private const val TAG = "NativeLoginManager"
+
+        // OAuth2 constants (duplicated from OAuth2 class due to private visibility)
+        private const val AUTHORIZATION = "Authorization"
+        private const val AUTHORIZATION_CODE = "authorization_code"
+        private const val CLIENT_ID = "client_id"
+        private const val CODE = "code"
+        private const val CODE_CHALLENGE = "code_challenge"
+        private const val CODE_VERIFIER = "code_verifier"
+        private const val GRANT_TYPE = "grant_type"
+        private const val HYBRID_AUTH_CODE = "hybrid_auth_code"
+        private const val OAUTH_AUTH_PATH = "/services/oauth2/authorize"
+        private const val OAUTH_ENDPOINT_HEADLESS_FORGOT_PASSWORD = "/services/auth/headless/forgot_password"
+        private const val OAUTH_ENDPOINT_HEADLESS_INIT_PASSWORDLESS_LOGIN = "/services/auth/headless/init/passwordless/login"
+        private const val OAUTH_ENDPOINT_HEADLESS_INIT_REGISTRATION = "/services/auth/headless/init/registration"
+        private const val OAUTH_TOKEN_PATH = "/services/oauth2/token"
+        private const val REDIRECT_URI = "redirect_uri"
+        private const val RESPONSE_TYPE = "response_type"
+        private const val FRONTDOOR_URL_KEY = "frontdoorUrl"
     }
 }

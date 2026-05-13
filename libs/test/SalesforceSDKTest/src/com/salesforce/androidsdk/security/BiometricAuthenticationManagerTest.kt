@@ -59,7 +59,7 @@ class BiometricAuthenticationManagerTest {
         userAccount = ScreenLockManagerTest.buildTestUserAccount()
         accountPrefs = ctx.getSharedPreferences(
             BIO_AUTH_POLICY
-                + userAccount.userLevelFilenameSuffix, Context.MODE_PRIVATE
+                + userAccount.getUserLevelFilenameSuffix(), Context.MODE_PRIVATE
         )
         UserAccountManager.getInstance().createAccount(userAccount);
     }
@@ -117,8 +117,8 @@ class BiometricAuthenticationManagerTest {
 
     @Test
     fun testCleanUp() {
-        val storedUser = SalesforceSDKManager.getInstance().userAccountManager.authenticatedUsers[0]
-        val storedUserPrefs = ctx.getSharedPreferences((BIO_AUTH_POLICY + storedUser.userLevelFilenameSuffix), Context.MODE_PRIVATE)
+        val storedUser = SalesforceSDKManager.getInstance().userAccountManager.authenticatedUsers!![0]
+        val storedUserPrefs = ctx.getSharedPreferences((BIO_AUTH_POLICY + storedUser.getUserLevelFilenameSuffix()), Context.MODE_PRIVATE)
         bioAuthManager.storeMobilePolicy(storedUser, true, 60)
         bioAuthManager.cleanUp(storedUser)
         Assert.assertFalse("User Mobile Policy should not be set.", storedUserPrefs.getBoolean(BIO_AUTH_POLICY, false))

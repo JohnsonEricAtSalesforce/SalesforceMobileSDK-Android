@@ -1,0 +1,494 @@
+/*
+ * Copyright (c) 2014-present, salesforce.com, inc.
+ * All rights reserved.
+ * Redistribution and use of this software in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
+ * - Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * - Neither the name of salesforce.com, inc. nor the names of its contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission of salesforce.com, inc.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.salesforce.androidsdk.smartstore.store
+
+import android.content.Context
+import android.database.sqlite.SQLiteException
+import android.text.TextUtils
+import com.salesforce.androidsdk.accounts.UserAccount
+import com.salesforce.androidsdk.analytics.EventBuilderHelper
+import com.salesforce.androidsdk.smartstore.util.SmartStoreLogger
+import com.salesforce.androidsdk.util.ManagedFilesHelper
+import net.zetetic.database.DatabaseErrorHandler
+import net.zetetic.database.sqlcipher.SQLiteConnection
+import net.zetetic.database.sqlcipher.SQLiteDatabase
+import net.zetetic.database.sqlcipher.SQLiteDatabaseHook
+import net.zetetic.database.sqlcipher.SQLiteOpenHelper
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.File
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
+
+/**
+ * Helper class to manage SmartStore's database creation and version management.
+ */
+class DBOpenHelper protected constructor(
+    encryptionKey: String,
+    context: Context,
+    private val dbName: String
+) : SQLiteOpenHelper(
+    context,
+    dbName,
+    encryptionKey,
+    null,
+    DB_VERSION,
+    DB_VERSION,
+    DBErrorHandler(),
+    DBHook(),
+    false
+) {
+
+    override fun onConfigure(db: SQLiteDatabase) {
+        db.enableWriteAheadLogging()
+    }
+
+    override fun onCreate(db: SQLiteDatabase) {
+        SmartStore.createMetaTables(db)
+    }
+
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+    }
+
+    class DBErrorHandler : DatabaseErrorHandler {
+        override fun onCorruption(dbObj: SQLiteDatabase, exception: SQLiteException) {
+            throw SmartStore.SmartStoreException("Database is corrupted", exception)
+        }
+    }
+
+    class DBHook : SQLiteDatabaseHook {
+        override fun preKey(connection: SQLiteConnection) {
+            if (SmartStore.LICENSE_KEY != null) {
+                connection.executeForString(
+                    String.format("PRAGMA cipher_license = '%s'", SmartStore.LICENSE_KEY),
+                    arrayOf<Any>(),
+                    null
+                )
+            }
+        }
+
+        /**
+         * Need to migrate for SqlCipher 4.x
+         * @param connection db connection being processed
+         */
+        override fun postKey(connection: SQLiteConnection) {
+            // Using sqlcipher 2.x kdf iter because 3.x default (64000) and 4.x default (256000) are too slow
+            // => should open 2.x databases without any migration
+            connection.executeRaw("PRAGMA kdf_iter = 4000", arrayOf<Any>(), null)
+        }
+    }
+
+    companion object {
+        // 1 --> up until 2.3
+        // 2 --> starting at 2.3 (new meta data table long_operations_status)
+        // 3 --> starting at 4.3 (soup_names table changes to soup_attr)
+        const val DB_VERSION = 3
+        const val DEFAULT_DB_NAME = "smartstore"
+        private const val TAG = "DBOpenHelper"
+        private const val DB_NAME_SUFFIX = ".db"
+        private const val ORG_KEY_PREFIX = "00D"
+        const val DATABASES = "databases"
+
+        /**
+         * Indicates if the SQLCipher native library is loaded. This is used as an object monitor for
+         * concurrency critical sections and as an atomic variable.
+         */
+        private val isSqlCipherLibraryLoaded: Lock = ReentrantLock()
+
+        /*
+         * Cache for the helper instances
+         */
+        private val openHelpers: MutableMap<String, DBOpenHelper> = HashMap()
+
+        /**
+         * Returns a map of all DBOpenHelper instances created. The key is the
+         * database name and the value is the instance itself.
+         *
+         * @return Map of DBOpenHelper instances.
+         */
+        @JvmStatic
+        @Synchronized
+        fun getOpenHelpers(): Map<String, DBOpenHelper> {
+            return openHelpers
+        }
+
+        /**
+         * Returns a list of all prefixes for  user databases.
+         *
+         * @return List of Database names(prefixes).
+         */
+        @JvmStatic
+        @Synchronized
+        fun getUserDatabasePrefixList(
+            ctx: Context,
+            account: UserAccount,
+            communityId: String?
+        ): List<String> {
+            return ManagedFilesHelper.getPrefixList(
+                ctx,
+                DATABASES,
+                account.getCommunityLevelFilenameSuffix(communityId),
+                DB_NAME_SUFFIX,
+                null
+            )
+        }
+
+        /**
+         * Returns a list of all prefixes for  user databases.
+         *
+         * @return List of Database names(prefixes).
+         */
+        @JvmStatic
+        @Synchronized
+        fun getGlobalDatabasePrefixList(
+            ctx: Context,
+            account: UserAccount?,
+            communityId: String?
+        ): List<String> {
+            return ManagedFilesHelper.getPrefixList(ctx, DATABASES, "", DB_NAME_SUFFIX, ORG_KEY_PREFIX)
+        }
+
+        /**
+         * Returns the DBOpenHelper instance associated with this user account.
+         *
+         * @param encryptionKey Password for database.
+         * @param ctx           Context.
+         * @param account       User account.
+         * @return DBOpenHelper instance.
+         */
+        @JvmStatic
+        @Synchronized
+        fun getOpenHelper(
+            encryptionKey: String,
+            ctx: Context,
+            account: UserAccount
+        ): DBOpenHelper {
+            return getOpenHelper(encryptionKey, ctx, account, null)
+        }
+
+        /**
+         * Returns the DBOpenHelper instance associated with this user and community.
+         *
+         * @param encryptionKey Password for database.
+         * @param ctx           Context.
+         * @param account       User account.
+         * @param communityId   Community ID.
+         * @return DBOpenHelper instance.
+         */
+        @JvmStatic
+        @Synchronized
+        fun getOpenHelper(
+            encryptionKey: String,
+            ctx: Context,
+            account: UserAccount,
+            communityId: String?
+        ): DBOpenHelper {
+            return getOpenHelper(encryptionKey, ctx, DEFAULT_DB_NAME, account, communityId)
+        }
+
+        /**
+         * Returns the DBOpenHelper instance for the given database name.
+         *
+         * @param encryptionKey password for database.
+         * @param ctx           Context.
+         * @param dbNamePrefix  The database name. This must be a valid file name without a
+         *                      filename extension such as ".db".
+         * @param account       User account. If this method is called before authentication,
+         *                      we will simply return the smart store DB, which is not associated
+         *                      with any user account. Otherwise, we will return a unique
+         *                      database at the community level.
+         * @param communityId   Community ID.
+         * @return DBOpenHelper instance.
+         */
+        @JvmStatic
+        @Synchronized
+        fun getOpenHelper(
+            encryptionKey: String,
+            ctx: Context,
+            dbNamePrefix: String,
+            account: UserAccount?,
+            communityId: String?
+        ): DBOpenHelper {
+            val dbName = StringBuilder(dbNamePrefix)
+
+            // If we have account information, we will use it to create a database suffix for the user.
+            if (account != null) {
+                // Default user path for a user is 'internal', if community ID is null.
+                val accountSuffix = account.getCommunityLevelFilenameSuffix(communityId)
+                dbName.append(accountSuffix)
+            }
+            dbName.append(DB_NAME_SUFFIX)
+            val fullDBName = dbName.toString()
+            var helper = openHelpers[fullDBName]
+            if (helper == null) {
+                val numDbs: List<String>
+                val key: String
+                val eventName: String
+                if (account == null) {
+                    numDbs = getGlobalDatabasePrefixList(ctx, null, communityId)
+                    key = "numGlobalStores"
+                    eventName = "globalSmartStoreInit"
+                } else {
+                    key = "numUserStores"
+                    eventName = "userSmartStoreInit"
+                    numDbs = getUserDatabasePrefixList(ctx, account, communityId)
+                }
+                val numStores = numDbs.size
+                val storeAttributes = JSONObject()
+                try {
+                    storeAttributes.put(key, numStores)
+                } catch (e: JSONException) {
+                    SmartStoreLogger.e(TAG, "Error occurred while creating JSON", e)
+                }
+                EventBuilderHelper.createAndStoreEvent(eventName, account, TAG, storeAttributes)
+                loadNativeLibrariesIfNeeded()
+                helper = DBOpenHelper(encryptionKey, ctx, fullDBName)
+                openHelpers[fullDBName] = helper
+            }
+            return helper
+        }
+
+        protected fun loadNativeLibrariesIfNeeded() {
+            isSqlCipherLibraryLoaded.lock()
+            try {
+                System.loadLibrary("sqlcipher")
+            } finally {
+                isSqlCipherLibraryLoaded.unlock()
+            }
+        }
+
+        /**
+         * Deletes the underlying database for the specified user account.
+         *
+         * @param ctx Context.
+         * @param account User account.
+         */
+        @JvmStatic
+        @Synchronized
+        fun deleteDatabase(ctx: Context, account: UserAccount) {
+            deleteDatabase(ctx, account, null)
+        }
+
+        /**
+         * Deletes the underlying database for the specified user and community.
+         *
+         * @param ctx Context.
+         * @param account User account.
+         * @param communityId Community ID.
+         */
+        @JvmStatic
+        @Synchronized
+        fun deleteDatabase(ctx: Context, account: UserAccount, communityId: String?) {
+            deleteDatabase(ctx, DEFAULT_DB_NAME, account, communityId)
+        }
+
+        /**
+         * Deletes the underlying database for the specified user and community.
+         *
+         * @param ctx Context.
+         * @param dbNamePrefix The database name. This must be a valid file name without a
+         *                     filename extension such as ".db".
+         * @param account User account.
+         * @param communityId Community ID.
+         */
+        @JvmStatic
+        @Synchronized
+        fun deleteDatabase(
+            ctx: Context,
+            dbNamePrefix: String,
+            account: UserAccount?,
+            communityId: String?
+        ) {
+            try {
+                val dbName = StringBuilder(dbNamePrefix)
+
+                // If we have account information, we will use it to create a database suffix for the user.
+                if (account != null) {
+                    // Default user path for a user is 'internal', if community ID is null.
+                    val accountSuffix = account.getCommunityLevelFilenameSuffix(communityId)
+                    dbName.append(accountSuffix)
+                }
+                dbName.append(DB_NAME_SUFFIX)
+                val fullDBName = dbName.toString()
+
+                // Close and remove the helper from the cache if it exists.
+                val helper = openHelpers[fullDBName]
+                if (helper != null) {
+                    helper.close()
+                    openHelpers.remove(fullDBName)
+                }
+
+                // Physically delete the database from disk.
+                ctx.deleteDatabase(fullDBName)
+
+                // If community id was not passed in, then we remove ALL databases for the account.
+                if (account != null && TextUtils.isEmpty(communityId)) {
+                    val accountSuffix = account.getUserLevelFilenameSuffix()
+                    val files = ManagedFilesHelper.getFiles(
+                        ctx,
+                        DATABASES,
+                        dbNamePrefix + accountSuffix,
+                        DB_NAME_SUFFIX,
+                        null
+                    )
+                    for (file in files) {
+                        openHelpers.remove(file.name)
+                    }
+                    ManagedFilesHelper.deleteFiles(files)
+                }
+            } catch (e: Exception) {
+                SmartStoreLogger.e(TAG, "Exception occurred while attemption to delete database", e)
+            }
+        }
+
+        /**
+         * Deletes all remaining authenticated databases. We pass in the key prefix
+         * for an organization here, because all authenticated DBs will have to
+         * go against an org, which means the org ID will be a part of the DB name.
+         * This prevents the global DBs from being removed.
+         *
+         * @param ctx Context.
+         */
+        @JvmStatic
+        @Synchronized
+        fun deleteAllUserDatabases(ctx: Context) {
+            val files = ManagedFilesHelper.getFiles(ctx, DATABASES, ORG_KEY_PREFIX, DB_NAME_SUFFIX, null)
+            for (file in files) {
+                openHelpers.remove(file.name)
+            }
+            ManagedFilesHelper.deleteFiles(files)
+        }
+
+        /**
+         * Deletes all databases of given user.
+         *
+         * @param ctx Context.
+         * @param userAccount User account.
+         */
+        @JvmStatic
+        @Synchronized
+        fun deleteAllDatabases(ctx: Context, userAccount: UserAccount?) {
+            if (userAccount != null) {
+                val files = ManagedFilesHelper.getFiles(
+                    ctx,
+                    DATABASES,
+                    userAccount.getUserLevelFilenameSuffix(),
+                    DB_NAME_SUFFIX,
+                    null
+                )
+                for (file in files) {
+                    openHelpers.remove(file.name)
+                }
+                ManagedFilesHelper.deleteFiles(files)
+            }
+        }
+
+        /**
+         * Determines if a smart store currently exists for the given account and/or community id.
+         *
+         * @param ctx Context.
+         * @param account User account.
+         * @param communityId Community ID.
+         * @return boolean indicating if a smartstore already exists.
+         */
+        @JvmStatic
+        fun smartStoreExists(
+            ctx: Context,
+            account: UserAccount?,
+            communityId: String?
+        ): Boolean {
+            return smartStoreExists(ctx, DEFAULT_DB_NAME, account, communityId)
+        }
+
+        /**
+         * Determines if a smart store currently exists for the given database name, account
+         * and/or community id.
+         *
+         * @param ctx Context.
+         * @param dbNamePrefix The database name. This must be a valid file name without a
+         *                     filename extension such as ".db".
+         * @param account User account.
+         * @param communityId Community ID.
+         * @return boolean indicating if a smartstore already exists.
+         */
+        @JvmStatic
+        fun smartStoreExists(
+            ctx: Context,
+            dbNamePrefix: String,
+            account: UserAccount?,
+            communityId: String?
+        ): Boolean {
+            val dbName = StringBuilder(dbNamePrefix)
+            if (account != null) {
+                val dbSuffix = account.getCommunityLevelFilenameSuffix(communityId)
+                dbName.append(dbSuffix)
+            }
+            dbName.append(DB_NAME_SUFFIX)
+            return ctx.getDatabasePath(dbName.toString()).exists()
+        }
+
+        /**
+         * Removes all files and folders in the given directory recursively as well as removes itself.
+         *
+         * @param dir Directory to remove all files and folders recursively.
+         * @return True if all delete operations were successful. False otherwise.
+         */
+        @JvmStatic
+        fun removeAllFiles(dir: File?): Boolean {
+            if (dir != null && dir.exists()) {
+                var success = true
+                val files = dir.listFiles()
+                if (files != null) {
+                    for (file in files) {
+                        success = if (file.isFile) {
+                            success && file.delete()
+                        } else {
+                            success && removeAllFiles(file)
+                        }
+                    }
+                }
+                success = success && dir.delete()
+                return success
+            } else {
+                return false
+            }
+        }
+
+        /**
+         * Changes the encryption key on the database.
+         *
+         * @param db Database object.
+         * @param oldKey Old encryption key.
+         * @param newKey New encryption key.
+         */
+        @JvmStatic
+        @Synchronized
+        fun changeKey(db: SQLiteDatabase, oldKey: String, newKey: String) {
+            db.query("PRAGMA rekey = '$newKey'")
+        }
+    }
+}

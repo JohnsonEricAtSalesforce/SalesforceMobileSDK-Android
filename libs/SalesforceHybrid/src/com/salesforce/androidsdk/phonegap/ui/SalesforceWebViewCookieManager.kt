@@ -61,7 +61,7 @@ class SalesforceWebViewCookieManager {
         val csrfToken = userAccount.csrfToken
         val orgId = userAccount.orgId
         val communityUrl = userAccount.communityUrl
-        val mainDomain = getDomainFromUrl(instanceUrl)
+        val mainDomain = instanceUrl?.let { getDomainFromUrl(it) }
 
         // Setup domain for community to avoid dupe cookies
         // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#define_where_cookies_are_sent
@@ -174,6 +174,6 @@ class SalesforceWebViewCookieManager {
 
     private fun getDomainFromUrl(url: String): String {
         val uri = URI(url)
-        return uri.host
+        return uri.host ?: ""
     }
 }

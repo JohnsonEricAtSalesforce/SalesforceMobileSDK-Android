@@ -80,7 +80,7 @@ class NativeLoginManagerTest {
         addUserAccount()
         Assert.assertTrue("Should show back button when there is a logged in user.", mgr.shouldShowBackButton)
 
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         Assert.assertTrue("Should show back if not locked.", mgr.shouldShowBackButton)
 
@@ -96,7 +96,7 @@ class NativeLoginManagerTest {
         addUserAccount()
         Assert.assertNull("Should not return username when bio auth is not enabled.", mgr.biometricAuthenticationUsername)
 
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         Assert.assertNull("Should not return username when not locked.", mgr.biometricAuthenticationUsername)
 
@@ -109,7 +109,7 @@ class NativeLoginManagerTest {
     fun testPresentBiometricAuthReturnsFalseWhenNotLocked() {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.biometricOptIn(true)
         // Not locked — should return false.
@@ -123,7 +123,7 @@ class NativeLoginManagerTest {
     fun testPresentBiometricAuthReturnsFalseWhenNotOptedIn() {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         // Opted out, but locked.
         bioAuthManager.lock()
@@ -174,7 +174,7 @@ class NativeLoginManagerTest {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager
                 as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.biometricOptIn(true)
         bioAuthManager.lock()
@@ -195,7 +195,7 @@ class NativeLoginManagerTest {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager
                 as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.biometricOptIn(true)
         bioAuthManager.lock()
@@ -218,7 +218,7 @@ class NativeLoginManagerTest {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager
                 as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.lock()
         Assert.assertTrue("Should be locked.", bioAuthManager.locked)
@@ -245,7 +245,7 @@ class NativeLoginManagerTest {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager
                 as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.lock()
 
@@ -271,7 +271,7 @@ class NativeLoginManagerTest {
     fun testBiometricAuthenticationUsernameWithNativeLoginUser() {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager as BiometricAuthenticationManager
         addNativeLoginUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.lock()
         Assert.assertEquals(

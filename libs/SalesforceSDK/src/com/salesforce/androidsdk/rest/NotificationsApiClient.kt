@@ -28,10 +28,10 @@
 package com.salesforce.androidsdk.rest
 
 import com.salesforce.androidsdk.app.SalesforceSDKManager
-import com.salesforce.androidsdk.rest.RestRequest.MEDIA_TYPE_JSON
 import com.salesforce.androidsdk.rest.RestRequest.RestMethod.GET
 import com.salesforce.androidsdk.rest.RestRequest.RestMethod.POST
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
@@ -66,13 +66,13 @@ class NotificationsApiClient(
 
         val restRequest = RestRequest(
             GET,
-            "https://${restClient.clientInfo.instanceUrl.host}/${ApiVersionStrings.getBasePath()}/connect/notifications/types",
+            "https://${restClient.getClientInfo().instanceUrl.host}/${ApiVersionStrings.getBasePath()}/connect/notifications/types",
             mutableMapOf<String, String>()
         )
         val restResponse = restClient.sendSync(restRequest)
-        val responseBodyString = restResponse.asString()
+        val responseBodyString = restResponse?.asString()
 
-        return if (restResponse.isSuccess && responseBodyString != null) {
+        return if (restResponse?.isSuccess() == true && responseBodyString != null) {
             NotificationsTypesResponseBody.fromJson(responseBodyString)
         } else {
             val errorResponseBody = responseBodyString?.let { NotificationsApiErrorResponseBody.fromJson(responseBodyString) }
@@ -103,16 +103,17 @@ class NotificationsApiClient(
             return null
         }
 
+        val mediaTypeJson = "application/json; charset=utf-8".toMediaType()
         val restRequest = RestRequest(
             POST,
-            "https://${restClient.clientInfo.instanceUrl.host}/${ApiVersionStrings.getBasePath()}/connect/notifications/${notificationId}/actions/${actionKey}",
-            "".toRequestBody(MEDIA_TYPE_JSON),
+            "https://${restClient.getClientInfo().instanceUrl.host}/${ApiVersionStrings.getBasePath()}/connect/notifications/${notificationId}/actions/${actionKey}",
+            "".toRequestBody(mediaTypeJson),
             mutableMapOf<String, String>()
         )
         val restResponse = restClient.sendSync(restRequest)
         val responseBodyString = restResponse?.asString()
 
-        return if (restResponse?.isSuccess == true && responseBodyString != null) {
+        return if (restResponse?.isSuccess() == true && responseBodyString != null) {
             NotificationsActionsResponseBody.fromJson(responseBodyString)
         } else {
             val errorResponseBody = responseBodyString?.let { NotificationsApiErrorResponseBody.fromJson(responseBodyString) }

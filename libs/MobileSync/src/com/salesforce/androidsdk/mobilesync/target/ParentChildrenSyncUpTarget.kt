@@ -551,7 +551,7 @@ open class ParentChildrenSyncUpTarget(
             val parentId = record.getString(idFieldName)
             val lastModRequest = getRequestForTimestamps(syncManager.apiVersion, parentId)
             val lastModResponse = syncManager.sendSyncWithMobileSyncUserAgent(lastModRequest)
-            val rows = if (lastModResponse.isSuccess) lastModResponse.asJSONObject().getJSONArray(
+            val rows = if (lastModResponse.isSuccess()) lastModResponse.asJSONObject().getJSONArray(
                 Constants.RECORDS
             ) else null
             if (rows != null && rows.length() > 0) {

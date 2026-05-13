@@ -68,7 +68,7 @@ internal abstract class AppLockManager(
 
     fun getAccountPrefs(account: UserAccount): SharedPreferences {
         val ctx = SalesforceSDKManager.getInstance().appContext
-        return ctx.getSharedPreferences(policyKey + account.userLevelFilenameSuffix, Context.MODE_PRIVATE)
+        return ctx.getSharedPreferences(policyKey + account.getUserLevelFilenameSuffix(), Context.MODE_PRIVATE)
     }
 
     fun getGlobalPrefs(): SharedPreferences {

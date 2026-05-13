@@ -41,8 +41,8 @@ abstract class LogoutCompleteReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == SalesforceSDKManager.LOGOUT_COMPLETE_INTENT_ACTION) {
             val reason = intent.getStringExtra(SalesforceSDKManager.LOGOUT_REASON_KEY)?.let {
-                LogoutReason.valueOf(it.uppercase())
-            } ?: LogoutReason.UNKNOWN
+                runCatching { LogoutReason.valueOf(it.uppercase()) }.getOrNull()
+            } ?: LogoutReason.USER_LOGOUT
             val userAccount = intent.getBundleExtra(USER_ACCOUNT_KEY)?.let { bundle ->
                 UserAccount(bundle)
             }

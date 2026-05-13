@@ -110,9 +110,9 @@ internal class TokenMigrationActivity : ComponentActivity() {
             return
         }
 
-        val orgId = intent.getStringExtra(EXTRA_ORG_ID)
-        val userId = intent.getStringExtra(EXTRA_USER_ID)
-        if ( orgId == null || userId == null) {
+        val orgId = intent.getStringExtra(EXTRA_ORG_ID) ?: ""
+        val userId = intent.getStringExtra(EXTRA_USER_ID) ?: ""
+        if (orgId.isEmpty() || userId.isEmpty()) {
             logMigrationError(resultCallback, ERROR_PARSE_OAUTH_CONFIG, null, null)
             return
         }
@@ -131,15 +131,15 @@ internal class TokenMigrationActivity : ComponentActivity() {
             val frontDoorUrl = withContext(IO) {
                 runCatching {
                     val authorizationUrl = viewModel.getAuthorizationUrl(
-                        server = user.instanceServer,
+                        server = user.instanceServer ?: "",
                         migrationOAuthConfig = oAuthConfig,
                     )
-                    val authorizationPath = with(authorizationUrl.toUri()) { "$path?$query" }
+                    val authorizationPath: String = with(authorizationUrl.toUri()) { "$path?$query" }
                     val request = RestRequest.getRequestForSingleAccess(authorizationPath)
                     val singleAccessResponse = client.sendSync(request)
 
                     singleAccessResponse
-                        ?.takeIf { it.isSuccess }
+                        ?.takeIf { it.isSuccess() }
                         ?.let {
                             Json.parseToJsonElement(it.asString())
                                 .jsonObject[FRONTDOOR_URL_KEY]
@@ -168,7 +168,7 @@ internal class TokenMigrationActivity : ComponentActivity() {
                     )
                 ) {
                     TokenMigrationView(
-                        webViewFactory = { buildAuthWebview(frontDoorUrl, resultCallback, user.instanceServer) }
+                        webViewFactory = { buildAuthWebview(frontDoorUrl, resultCallback, user.instanceServer ?: "") }
                     )
                 }
             }
@@ -289,10 +289,10 @@ internal class TokenMigrationActivity : ComponentActivity() {
         resultCallback: MigrationCallbackRegistry.MigrationCallbacks,
         error: String,
         errorDesc: String?,
-        e: Throwable?,
+        e: Exception?,
     ) {
         val message = error + (errorDesc?.let { ": $it" } ?: "")
-        SalesforceSDKLogger.e(TAG, message, e)
+        SalesforceSDKLogger.e(TAG, message, e ?: Exception(message))
         resultCallback.onMigrationError(error, errorDesc, e)
         finish()
     }

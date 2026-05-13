@@ -119,7 +119,10 @@ open class SoqlSyncDownTarget : SyncDownTarget {
     }
 
     override val isSyncDownSortedByLatestModification: Boolean
-        get() = SOQLMutator(query).isOrderingBy(modificationDateFieldName)
+        get() {
+            val fieldName = modificationDateFieldName
+            return SOQLMutator(query).isOrderingBy(fieldName)
+        }
 
     /**
      * @return json representation of target
@@ -171,10 +174,11 @@ open class SoqlSyncDownTarget : SyncDownTarget {
 
     @Throws(IOException::class, JSONException::class)
     override fun continueFetch(syncManager: SyncManager): JSONArray? {
-        if (nextRecordsUrl == null) {
+        val url = nextRecordsUrl
+        if (url == null) {
             return null
         }
-        val request = RestRequest(RestRequest.RestMethod.GET, nextRecordsUrl)
+        val request = RestRequest(RestRequest.RestMethod.GET, url)
         val response = syncManager.sendSyncWithMobileSyncUserAgent(request)
         val responseJson = getResponseJson(response)
         val records = getRecordsFromResponseJson(responseJson)

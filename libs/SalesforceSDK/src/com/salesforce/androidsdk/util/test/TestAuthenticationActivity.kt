@@ -32,9 +32,7 @@ import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.salesforce.androidsdk.accounts.UserAccountBuilder
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_DEFAULT
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_FIRST_LOGIN
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_LOGIN
+import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.rest.ClientManager.AccMgrAuthTokenProvider
 import com.salesforce.androidsdk.util.test.TestCredentials.ACCOUNT_NAME
@@ -96,7 +94,7 @@ class TestAuthenticationActivity : AppCompatActivity() {
             null,
             REFRESH_TOKEN
         )
-        authTokenProvider.newAuthToken
+        authTokenProvider.getNewAuthToken()
         account.downloadProfilePhoto()
 
         val userAccountManager = SalesforceSDKManager.getInstance().userAccountManager
@@ -104,13 +102,13 @@ class TestAuthenticationActivity : AppCompatActivity() {
         val numAuthenticatedUsers = userAccountManager.authenticatedUsers?.size ?: 0
         val userSwitchType = when {
             // We've already authenticated the first user, so there should be one.
-            numAuthenticatedUsers == 1 -> USER_SWITCH_TYPE_FIRST_LOGIN
+            numAuthenticatedUsers == 1 -> UserAccountManager.USER_SWITCH_TYPE_FIRST_LOGIN
 
             // Otherwise we're logging in with an additional user.
-            numAuthenticatedUsers > 1 -> USER_SWITCH_TYPE_LOGIN
+            numAuthenticatedUsers > 1 -> UserAccountManager.USER_SWITCH_TYPE_LOGIN
 
             // This should never happen but if it does, pass in the "unknown" value.
-            else -> USER_SWITCH_TYPE_DEFAULT
+            else -> UserAccountManager.USER_SWITCH_TYPE_DEFAULT
         }
         userAccountManager.sendUserSwitchIntent(userSwitchType, null)
         userAccountManager.createAccount(account)

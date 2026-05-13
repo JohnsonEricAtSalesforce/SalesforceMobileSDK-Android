@@ -33,6 +33,19 @@ const val VERSION_SHARED_PREF = "version_info"
 const val ACC_MGR_KEY = "acc_mgr_version"
 
 /**
+ * Test-specific subclass that exposes protected methods for testing
+ */
+private class TestUpgradeManager(userManager: UserManager) : SalesforceSDKUpgradeManager(userManager) {
+    public override fun writeCurVersion(key: String, value: String) {
+        super.writeCurVersion(key, value)
+    }
+
+    public override fun getInstalledVersion(key: String): String {
+        return super.getInstalledVersion(key)
+    }
+}
+
+/**
  * Tests for SalesforceSDKUpgradeManager
  */
 @RunWith(AndroidJUnit4::class)
@@ -45,7 +58,7 @@ class SalesforceSDKUpgradeManagerTest {
     private val users = mutableListOf(user11, user12, user21, user31)
 
     private val userMgr = UserManager { users }
-    private val upgradeMgr = SalesforceSDKUpgradeManager(userMgr)
+    private val upgradeMgr = TestUpgradeManager(userMgr)
     private val legacySettingsMgr = LegacyAdminSettingsManager()
     private val adminSettingsMgr = AdminSettingsManager()
 
@@ -134,10 +147,10 @@ class SalesforceSDKUpgradeManagerTest {
         Assert.assertEquals(SalesforceSDKManager.SDK_VERSION, getVersion())
 
         // Make sure legacy settings have been cleared
-        Assert.assertTrue(legacySettingsMgr.getPrefs(user11).isEmpty())
-        Assert.assertTrue(legacySettingsMgr.getPrefs(user12).isEmpty())
-        Assert.assertTrue(legacySettingsMgr.getPrefs(user21).isEmpty())
-        Assert.assertTrue(legacySettingsMgr.getPrefs(user31).isEmpty())
+        Assert.assertTrue(legacySettingsMgr.getPrefs(user11)!!.isEmpty())
+        Assert.assertTrue(legacySettingsMgr.getPrefs(user12)!!.isEmpty())
+        Assert.assertTrue(legacySettingsMgr.getPrefs(user21)!!.isEmpty())
+        Assert.assertTrue(legacySettingsMgr.getPrefs(user31)!!.isEmpty())
 
         // Make sure user level custom attributes include (legacy) org level custom attributes
         Assert.assertEquals(
@@ -237,7 +250,7 @@ class SalesforceSDKUpgradeManagerTest {
         every { SalesforceSDKLogger.e(any(), any<String>()) } returns Unit
 
         // Create upgrade manager and upgrade
-        val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
+        val upgradeManager = TestUpgradeManager(userMgr)
         upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
         upgradeManager.upgrade()
 
@@ -288,7 +301,7 @@ class SalesforceSDKUpgradeManagerTest {
         }
 
         // Create upgrade manager and trigger migration
-        val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
+        val upgradeManager = TestUpgradeManager(userMgr)
         upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
         upgradeManager.upgrade()
 
@@ -322,7 +335,7 @@ class SalesforceSDKUpgradeManagerTest {
         }
 
         // Create upgrade manager and trigger migration
-        val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
+        val upgradeManager = TestUpgradeManager(userMgr)
         upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
         upgradeManager.upgrade()
 
@@ -366,7 +379,7 @@ class SalesforceSDKUpgradeManagerTest {
         every { SalesforceSDKLogger.e(any(), any<String>()) } returns Unit
 
         // Create upgrade manager and trigger migration
-        val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
+        val upgradeManager = TestUpgradeManager(userMgr)
         upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
         upgradeManager.upgrade()
 
@@ -420,7 +433,7 @@ class SalesforceSDKUpgradeManagerTest {
         every { SalesforceSDKLogger.e(any(), any<String>(), any<Exception>()) } returns Unit
 
         // Create upgrade manager and trigger migration
-        val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
+        val upgradeManager = TestUpgradeManager(userMgr)
         upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
         upgradeManager.upgrade()
 
@@ -444,7 +457,7 @@ class SalesforceSDKUpgradeManagerTest {
         every { SalesforceSDKManager.getInstance() } returns mockSDKManager
 
         // Create upgrade manager and set version to 15.0.0 (no upgrade needed)
-        val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
+        val upgradeManager = TestUpgradeManager(userMgr)
         upgradeManager.writeCurVersion(ACC_MGR_KEY, "15.0.0")
         upgradeManager.upgrade()
 

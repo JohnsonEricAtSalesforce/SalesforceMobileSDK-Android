@@ -118,7 +118,7 @@ class TokenMigrationActivityTest {
 
         // Default mock for sendSync to prevent hanging - tests can override this
         val mockResponse = mockk<com.salesforce.androidsdk.rest.RestResponse>(relaxed = true)
-        every { mockResponse.isSuccess } returns true
+        every { mockResponse.isSuccess() } returns true
         every { mockResponse.asString() } returns """{"$FRONTDOOR_URL_KEY": "https://test.salesforce.com/frontdoor"}"""
         every { mockRestClient.sendSync(any()) } returns mockResponse
 
@@ -368,7 +368,7 @@ class TokenMigrationActivityTest {
 
         // Mock response without frontdoor_uri key
         every { mockRestClient.sendSync(any()) } returns mockk(relaxed = true) {
-            every { isSuccess } returns true
+            every { isSuccess() } returns true
             every { asString() } returns "{}"
         }
 

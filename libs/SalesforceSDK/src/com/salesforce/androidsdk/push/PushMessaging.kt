@@ -545,6 +545,6 @@ object PushMessaging {
     }
 
     private fun getSharedPrefFile(account: UserAccount?): String {
-        return GCM_PREFS + account?.userLevelFilenameSuffix
+        return GCM_PREFS + account?.getUserLevelFilenameSuffix()
     }
 }

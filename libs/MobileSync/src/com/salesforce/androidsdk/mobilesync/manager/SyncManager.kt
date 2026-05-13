@@ -812,7 +812,7 @@ class SyncManager private constructor(smartStore: SmartStore, restClient: RestCl
                 account ?: MobileSyncSDKManager.getInstance().userAccountManager.cachedCurrentUser
             val store =
                 smartStore ?: MobileSyncSDKManager.getInstance().getSmartStore(user, communityId)
-            val uniqueId = ((if (user != null) user.userId else "") + ":" + store.database.path)
+            val uniqueId = ((if (user != null) user.userId else "") + ":" + store.getDatabase().path)
             var instance = INSTANCES[uniqueId]
             if (instance == null) {
                 /*
@@ -855,7 +855,7 @@ class SyncManager private constructor(smartStore: SmartStore, restClient: RestCl
             if (account != null) {
                 val keysToRemove: MutableSet<String> = HashSet()
                 for (key in INSTANCES.keys) {
-                    if (key.startsWith(account.userId)) {
+                    if (key.startsWith(account.userId ?: "")) {
                         keysToRemove.add(key)
                         val syncManager = INSTANCES[key] ?: continue
                         syncManager.stop()

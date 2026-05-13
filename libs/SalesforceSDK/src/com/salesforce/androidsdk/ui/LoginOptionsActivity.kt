@@ -338,10 +338,10 @@ fun LoginOptionsScreen(
             modifier = Modifier.padding(PADDING_SIZE.dp)
         )
 
-        val scopes = bootConfig.oauthScopes ?: emptyArray<String>()
+        val scopes = bootConfig.getOauthScopes() ?: emptyArray<String>()
         val bootConfigList = listOf(
-            "Consumer Key" to bootConfig.remoteAccessConsumerKey,
-            "Redirect URI" to bootConfig.oauthRedirectURI,
+            "Consumer Key" to bootConfig.getRemoteAccessConsumerKey(),
+            "Redirect URI" to bootConfig.getOauthRedirectURI(),
             "Scopes" to scopes.joinToString(separator = ", "),
         )
         bootConfigList.forEach { (name, value) ->
@@ -418,14 +418,12 @@ fun LoginOptionsScreenPreview() {
     val consumerKey = stringResource(R.string.remoteAccessConsumerKey)
     val redirect = stringResource(R.string.oauthRedirectURI)
 
+    val defaultScopes = emptyArray<String>()
     LoginOptionsScreen(
         innerPadding = PaddingValues(0.dp),
         useWebServer = MutableLiveData(true),
         useHybridToken = MutableLiveData(false),
         overrideConfig = null,
-        bootConfig = object : BootConfig() {
-            override fun getRemoteAccessConsumerKey() = consumerKey
-            override fun getOauthRedirectURI() = redirect
-        },
+        bootConfig = BootConfig.getBootConfig(LocalContext.current),
     )
 }

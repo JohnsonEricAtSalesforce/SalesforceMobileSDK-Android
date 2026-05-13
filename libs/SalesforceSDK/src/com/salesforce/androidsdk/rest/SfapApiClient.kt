@@ -26,10 +26,10 @@
  */
 package com.salesforce.androidsdk.rest
 
-import com.salesforce.androidsdk.rest.RestRequest.MEDIA_TYPE_JSON
 import com.salesforce.androidsdk.rest.RestRequest.RestMethod.POST
 import com.salesforce.androidsdk.rest.SfapApiGenerationsResponseBody.Companion.fromJson
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
@@ -79,11 +79,11 @@ class SfapApiClient(
             generateSfapApiHeaders()
         )
         val restResponse = restClient.sendSync(restRequest)
-        val responseBodyString = restResponse.asString()
-        return if (restResponse.isSuccess && responseBodyString != null) {
+        val responseBodyString = restResponse?.asString()
+        return if (restResponse?.isSuccess() == true && responseBodyString != null) {
             SfapApiEmbeddingsResponseBody.fromJson(responseBodyString)
         } else {
-            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString)
+            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString ?: "")
             throw SfapApiException(
                 errorCode = errorResponseBody.errorCode,
                 message = responseBodyString,
@@ -118,11 +118,11 @@ class SfapApiClient(
         )
         val restResponse = restClient.sendSync(restRequest)
 
-        val responseBodyString = restResponse.asString()
-        return if (restResponse.isSuccess && responseBodyString != null) {
+        val responseBodyString = restResponse?.asString()
+        return if (restResponse?.isSuccess() == true && responseBodyString != null) {
             SfapApiChatGenerationsResponseBody.fromJson(responseBodyString)
         } else {
-            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString)
+            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString ?: "")
             throw SfapApiException(
                 errorCode = errorResponseBody.errorCode,
                 message = responseBodyString,
@@ -157,11 +157,11 @@ class SfapApiClient(
         )
         val restResponse = restClient.sendSync(restRequest)
 
-        val responseBodyString = restResponse.asString()
-        return if (restResponse.isSuccess && responseBodyString != null) {
+        val responseBodyString = restResponse?.asString()
+        return if (restResponse?.isSuccess() == true && responseBodyString != null) {
             fromJson(responseBodyString)
         } else {
-            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString)
+            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString ?: "")
             throw SfapApiException(
                 errorCode = errorResponseBody.errorCode,
                 message = responseBodyString,
@@ -194,11 +194,11 @@ class SfapApiClient(
         )
         val restResponse = restClient.sendSync(restRequest)
 
-        val responseBodyString = restResponse.asString()
-        return if (restResponse.isSuccess && responseBodyString != null) {
+        val responseBodyString = restResponse?.asString()
+        return if (restResponse?.isSuccess() == true && responseBodyString != null) {
             SfapApiFeedbackResponseBody.fromJson(responseBodyString)
         } else {
-            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString)
+            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString ?: "")
             throw SfapApiException(
                 errorCode = errorResponseBody.errorCode,
                 message = responseBodyString,
@@ -211,6 +211,7 @@ class SfapApiClient(
     companion object {
 
         internal val jsonIgnoreUnknownKeys = Json { ignoreUnknownKeys = true }
+        private val MEDIA_TYPE_JSON = "application/json; charset=utf-8".toMediaType()
 
         private fun generateSfapApiHeaders() = mutableMapOf(
             "x-sfdc-app-context" to "EinsteinGPT",

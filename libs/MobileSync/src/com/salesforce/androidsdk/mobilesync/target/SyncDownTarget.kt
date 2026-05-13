@@ -207,13 +207,13 @@ abstract class SyncDownTarget : SyncTarget {
         return String.format(
             "SELECT {%s:%s} FROM {%s} WHERE {%s:%s} = 'false' %s ORDER BY {%s:%s} ASC",
             soupName,
-            idField,
+            idField ?: "",
             soupName,
             soupName,
             LOCAL,
             additionalPredicate,
             soupName,
-            idField
+            idField ?: ""
         )
     }
 
@@ -263,7 +263,7 @@ abstract class SyncDownTarget : SyncTarget {
         var maxTimeStamp: Long = -1
         for (i in 0 until records.length()) {
             val timeStampStr =
-                JSONObjectHelper.optString(records.getJSONObject(i), modifiedDateFieldName)
+                JSONObjectHelper.optString(records.getJSONObject(i), modifiedDateFieldName ?: "")
             if (timeStampStr == null) {
                 maxTimeStamp = -1
                 break // field not present

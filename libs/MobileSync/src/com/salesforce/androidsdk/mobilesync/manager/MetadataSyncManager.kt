@@ -231,7 +231,7 @@ class MetadataSyncManager private constructor(
             val syncManager: SyncManager =
                 SyncManager.getInstance(user, communityId, store)
             val uniqueId = ((if (user != null) user.userId else "") + ":"
-                    + store.database.path)
+                    + store.getDatabase().path)
             val instance = INSTANCES[uniqueId] ?: MetadataSyncManager(store, syncManager).also {
                 INSTANCES[uniqueId] = it
             }
@@ -260,7 +260,7 @@ class MetadataSyncManager private constructor(
             if (account != null) {
                 val keysToRemove: MutableSet<String> = HashSet()
                 for (key in INSTANCES.keys) {
-                    if (key.startsWith(account.userId)) {
+                    if (key.startsWith(account.userId ?: "")) {
                         keysToRemove.add(key)
                     }
                 }

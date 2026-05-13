@@ -20,13 +20,29 @@ allprojects {
     group = "com.salesforce.mobilesdk"
     version = "14.0.0"
 
+    // Configure JVM toolchain to ensure consistent Java/Kotlin compilation targets
+    plugins.withType<JavaBasePlugin> {
+        extensions.configure<JavaPluginExtension> {
+            toolchain {
+                languageVersion.set(JavaLanguageVersion.of(17))
+            }
+        }
+    }
+
     // Ensure that we do not use newer language features that would make the SDK incompatible with
     // apps that do not target the latest version of Kotlin.
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
         kotlinOptions {
+            jvmTarget = "17"
             freeCompilerArgs += arrayOf("-Xopt-in=kotlin.RequiresOptIn")
             apiVersion = "1.6"
             languageVersion = "1.6"
         }
+    }
+
+    // Set Java compatibility to match Kotlin JVM target
+    tasks.withType<JavaCompile>().configureEach {
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
     }
 }

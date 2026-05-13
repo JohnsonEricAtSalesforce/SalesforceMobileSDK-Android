@@ -149,7 +149,7 @@ class LoginViewModelMockTest {
             onAuthFlowComplete(
                 tokenResponse = mockTokenResponse,
                 loginServer = testServer,
-                consumerKey = bootConfig.remoteAccessConsumerKey,
+                consumerKey = bootConfig.remoteAccessConsumerKey!!,
                 onAuthFlowError = any(),
                 onAuthFlowSuccess = any(),
                 buildAccountName = any(),

@@ -278,9 +278,9 @@ open class BriefcaseSyncDownTarget internal constructor(
     @Throws(IOException::class, JSONException::class)
     protected fun fetchFromServer(
         syncManager: SyncManager,
-        sobjectType: String?,
-        ids: List<String>?,
-        fieldlist: List<String>?
+        sobjectType: String,
+        ids: List<String>,
+        fieldlist: List<String>
     ): JSONArray {
         syncManager.checkAcceptingSyncs()
         val request = RestRequest.getRequestForCollectionRetrieve(
@@ -308,7 +308,7 @@ open class BriefcaseSyncDownTarget internal constructor(
         syncId: Long
     ) {
         val smartStore = syncManager.smartStore
-        synchronized(smartStore.database) {
+        synchronized(smartStore.getDatabase()) {
             try {
                 smartStore.beginTransaction()
                 for (i in 0 until records.length()) {

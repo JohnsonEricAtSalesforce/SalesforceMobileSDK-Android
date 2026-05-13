@@ -72,7 +72,7 @@ internal class SPAuthCodeHelper private constructor (
 
     private fun getTokenResponse(): TokenEndpointResponse {
         val tokenResponse = OAuth2.exchangeCode(
-            HttpAccess.DEFAULT,
+            HttpAccess.DEFAULT!!,
             URI.create(loginUrl),
             spConfig.oauthClientId,
             code,
@@ -89,7 +89,11 @@ internal class SPAuthCodeHelper private constructor (
             loginServer = loginUrl,
             consumerKey = spConfig.oauthClientId,
             onAuthFlowError = { error, errorDesc, e ->
-                SalesforceSDKLogger.e(TAG, "$error: $errorDesc", e)
+                if (e != null) {
+                    SalesforceSDKLogger.e(TAG, "$error: $errorDesc", e)
+                } else {
+                    SalesforceSDKLogger.e(TAG, "$error: $errorDesc")
+                }
             },
             onAuthFlowSuccess = { userAccount ->
                 SalesforceSDKLogger.d(TAG, "onAuthFlowSuccess $userAccount")

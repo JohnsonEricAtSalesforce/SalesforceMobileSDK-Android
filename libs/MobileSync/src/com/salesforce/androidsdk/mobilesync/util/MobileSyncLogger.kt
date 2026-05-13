@@ -181,7 +181,7 @@ object MobileSyncLogger {
      */
     @JvmStatic
     fun setLogLevel(level: SalesforceLogger.Level) {
-        logger.logLevel = level
+        logger.setLogLevel(level)
     }
 
     private val logger: SalesforceLogger

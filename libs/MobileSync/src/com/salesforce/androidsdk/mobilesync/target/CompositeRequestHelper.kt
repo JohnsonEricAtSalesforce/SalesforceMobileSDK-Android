@@ -67,10 +67,14 @@ object CompositeRequestHelper {
             val refId = recordRequest.referenceId ?: continue
             refIdToRequests[refId] = recordRequest.asRestRequest(syncManager.apiVersion)
         }
+        val nonNullRequests = LinkedHashMap<String, RestRequest>()
+        refIdToRequests.filterValues { it != null }.forEach { (key, value) ->
+            nonNullRequests[key] = value!!
+        }
         val compositeRequest: RestRequest =
-            RestRequest.getCompositeRequest(syncManager.apiVersion, allOrNone, refIdToRequests)
+            RestRequest.getCompositeRequest(syncManager.apiVersion, allOrNone, nonNullRequests)
         val response = syncManager.sendSyncWithMobileSyncUserAgent(compositeRequest)
-        if (!response.isSuccess) {
+        if (!response.isSuccess()) {
             throw MobileSyncException("sendCompositeRequest:$response")
         }
         val compositeResponse = CompositeResponse(response.asJSONObject())
@@ -108,7 +112,7 @@ object CompositeRequestHelper {
                     requestType
                 )
                 val response = syncManager.sendSyncWithMobileSyncUserAgent(request)
-                if (!response.isSuccess) {
+                if (!response.isSuccess()) {
                     throw MobileSyncException(
                         "sendAsCollectionRequests:$response"
                     )
@@ -178,7 +182,7 @@ object CompositeRequestHelper {
         companion object {
             @Throws(JSONException::class)
             fun fromCompositeSubResponse(compositeSubResponse: CompositeSubResponse): RecordResponse {
-                val success = compositeSubResponse.isSuccess
+                val success = compositeSubResponse.isSuccess()
                 var id: String? = null
                 var recordDoesNotExist = false
                 var relatedRecordDoesNotExist = false
@@ -248,29 +252,29 @@ object CompositeRequestHelper {
             return when (requestType) {
                 CREATE -> RestRequest.getRequestForCreate(
                     apiVersion,
-                    objectType,
-                    fields
+                    objectType ?: "",
+                    fields?.filterValues { it != null }?.mapValues { it.value!! }
                 )
 
                 UPDATE -> RestRequest.getRequestForUpdate(
                     apiVersion,
-                    objectType,
-                    id,
-                    fields
+                    objectType ?: "",
+                    id ?: "",
+                    fields?.filterValues { it != null }?.mapValues { it.value!! }
                 )
 
                 UPSERT -> RestRequest.getRequestForUpsert(
                     apiVersion,
-                    objectType,
-                    externalIdFieldName,
-                    externalId,
-                    fields
+                    objectType ?: "",
+                    externalIdFieldName ?: "",
+                    externalId ?: "",
+                    fields?.filterValues { it != null }?.mapValues { it.value!! }
                 )
 
                 DELETE -> RestRequest.getRequestForDelete(
                     apiVersion,
-                    objectType,
-                    id
+                    objectType ?: "",
+                    id ?: ""
                 )
             }
         }
@@ -386,13 +390,13 @@ object CompositeRequestHelper {
             ): RestRequest {
                 when (requestType) {
                     CREATE -> return RestRequest.getRequestForCollectionCreate(
-                        apiVersion,
+                        apiVersion ?: "",
                         allOrNone,
                         getJSONArrayForCollectionRequest(recordRequests, CREATE)
                     )
 
                     UPDATE -> return RestRequest.getRequestForCollectionUpdate(
-                        apiVersion,
+                        apiVersion ?: "",
                         allOrNone,
                         getJSONArrayForCollectionRequest(recordRequests, UPDATE)
                     )
@@ -414,7 +418,7 @@ object CompositeRequestHelper {
                             val externalIdFieldName = externalIdFieldNames[0]
                             return RestRequest
                                 .getRequestForCollectionUpsert(
-                                    apiVersion,
+                                    apiVersion ?: "",
                                     allOrNone,
                                     objectType,
                                     externalIdFieldName,
@@ -422,14 +426,14 @@ object CompositeRequestHelper {
                                 )
                         }
                         return RestRequest.getRequestForCollectionDelete(
-                            apiVersion,
+                            apiVersion ?: "",
                             false,
                             getIds(recordRequests, DELETE)
                         )
                     }
 
                     DELETE -> return RestRequest.getRequestForCollectionDelete(
-                        apiVersion,
+                        apiVersion ?: "",
                         false,
                         getIds(recordRequests, DELETE)
                     )

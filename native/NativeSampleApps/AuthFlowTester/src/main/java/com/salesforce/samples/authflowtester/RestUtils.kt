@@ -73,12 +73,12 @@ suspend fun revokeAccessTokenAction(client: RestClient?): RequestResult {
         val response = result.getOrNull()
         val displayValue = when {
             response == null -> FAILED_OPERATION
-            response.isSuccess -> REVOKE_SUCCESS
-            !response.isSuccess -> "$FAILED_OPERATION Error code: ${response.statusCode}"
+            response.isSuccess() -> REVOKE_SUCCESS
+            !response.isSuccess() -> "$FAILED_OPERATION Error code: ${response.getStatusCode()}"
             else -> FAILED_OPERATION
         }
 
-        return RequestResult(response?.isSuccess ?: false, displayValue)
+        return RequestResult(response?.isSuccess() ?: false, displayValue)
     } else {
         val displayValue = result.exceptionOrNull()?.message ?: UNKNOWN_ERROR
         return RequestResult(false, displayValue)
@@ -94,8 +94,8 @@ suspend fun makeRestRequest(client: RestClient?, apiVersion: String): RequestRes
         val response = result.getOrNull()
         val displayValue = when {
             response == null -> FAILED_OPERATION
-            response.isSuccess -> REQUEST_SUCCESS
-            !response.isSuccess -> "$FAILED_OPERATION Error code: ${response.statusCode}"
+            response.isSuccess() -> REQUEST_SUCCESS
+            !response.isSuccess() -> "$FAILED_OPERATION Error code: ${response.getStatusCode()}"
             else -> FAILED_OPERATION
         }
         val formattedResponse = try {
@@ -105,7 +105,7 @@ suspend fun makeRestRequest(client: RestClient?, apiVersion: String): RequestRes
             response?.asString() ?: ""
         }
 
-        return RequestResult(response?.isSuccess ?: false, displayValue, formattedResponse)
+        return RequestResult(response?.isSuccess() ?: false, displayValue, formattedResponse)
     } else {
         return RequestResult(false, result.exceptionOrNull()?.message ?: UNKNOWN_ERROR)
     }

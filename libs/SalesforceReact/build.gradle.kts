@@ -175,3 +175,7 @@ afterEvaluate {
         println("The preDebugAndroidTestBuild task was not found.")
     }
 }
+
+kotlin {
+    jvmToolchain(17)
+}

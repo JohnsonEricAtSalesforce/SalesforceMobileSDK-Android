@@ -213,13 +213,13 @@ open class PushService {
     protected fun onSendRegisterPushNotificationRequest(
         requestBodyJsonFields: Map<String, Any?>?,
         restClient: RestClient,
-    ): RestResponse = restClient.sendSync(
+    ): RestResponse? = restClient.sendSync(
         RestRequest.getRequestForCreate(
             ApiVersionStrings.getVersionNumber(
                 SalesforceSDKManager.getInstance().appContext
             ),
             MOBILE_PUSH_SERVICE_DEVICE,
-            requestBodyJsonFields
+            requestBodyJsonFields?.filterValues { it != null }?.mapValues { it.value!! }
         )
     )
 
@@ -408,7 +408,7 @@ open class PushService {
             fields[CIPHER_NAME] = Encryptor.CipherMode.RSA_OAEP_SHA256.name
 
             var status = REGISTRATION_STATUS_FAILED
-            val response = onSendRegisterPushNotificationRequest(fields, restClient)
+            val response = onSendRegisterPushNotificationRequest(fields, restClient) ?: return null
             var id: String? = null
 
             /*
@@ -418,12 +418,11 @@ open class PushService {
              * are not enabled for this connected app, which means we
              * should not attempt to re-register a few minutes later.
              */
-            when (response.statusCode) {
+            when (response.getStatusCode()) {
                 HTTP_CREATED -> {
-                    response.asJSONObject()?.let { jsonObject ->
-                        id = jsonObject.getString(FIELD_ID)
-                        status = REGISTRATION_STATUS_SUCCEEDED
-                    }
+                    val jsonObject = response.asJSONObject()
+                    id = jsonObject.getString(FIELD_ID)
+                    status = REGISTRATION_STATUS_SUCCEEDED
                 }
 
                 HTTP_NOT_FOUND -> id = NOT_ENABLED
@@ -472,14 +471,14 @@ open class PushService {
     protected fun onSendUnregisterPushNotificationRequest(
         registeredId: String?,
         restClient: RestClient,
-    ): RestResponse {
+    ): RestResponse? {
         return restClient.sendSync(
             RestRequest.getRequestForDelete(
                 ApiVersionStrings.getVersionNumber(
                     SalesforceSDKManager.getInstance().appContext
                 ),
                 MOBILE_PUSH_SERVICE_DEVICE,
-                registeredId
+                registeredId ?: ""
             )
         )
     }
@@ -494,7 +493,7 @@ open class PushService {
             onSendUnregisterPushNotificationRequest(
                 registeredId,
                 restClient
-            ).consume()
+            )?.consume()
             onPushNotificationRegistrationStatusInternal(status = UNREGISTRATION_STATUS_SUCCEEDED, restClient = restClient, userAccount = account)
         }.onFailure { throwable ->
             onPushNotificationRegistrationStatusInternal(status = UNREGISTRATION_STATUS_FAILED, restClient = restClient, userAccount = account)
@@ -544,13 +543,13 @@ open class PushService {
                     account.contentSid,
                     account.csrfToken
                 ),
-                account.authToken,
-                HttpAccess.DEFAULT,
+                account.authToken ?: "",
+                HttpAccess.DEFAULT ?: HttpAccess(null, null),
                 AccMgrAuthTokenProvider(
                     clientManager,
-                    account.instanceServer,
-                    account.authToken,
-                    account.refreshToken
+                    account.instanceServer ?: "",
+                    account.authToken ?: "",
+                    account.refreshToken ?: ""
                 )
             )
         }.onFailure { throwable ->
@@ -699,7 +698,7 @@ open class PushService {
                     }
 
                 // Send broadcast now to finish logout if we are offline.
-                if (!HttpAccess.DEFAULT.hasNetwork()) {
+                if (HttpAccess.DEFAULT?.hasNetwork() != true) {
                     context.sendBroadcast(
                         Intent(
                             UNREGISTERED_ATTEMPT_COMPLETE_EVENT

@@ -106,22 +106,18 @@ internal class IDPAuthCodeHelper private constructor(
     fun getAuthorizationPathForSP(): String? {
         SalesforceSDKLogger.d(TAG, "Getting authorization url")
         val context = SalesforceSDKManager.getInstance().appContext
-        val useHybridAuthentication = SalesforceSDKManager.getInstance().useHybridAuthentication
         val authorizationUri = getAuthorizationUrl(
-            true, // use web server flow
-            useHybridAuthentication,
             URI(userAccount.loginServer),
             spConfig.oauthClientId,
             spConfig.oauthCallbackUrl,
             spConfig.oauthScopes,
             context.getString(R.string.oauth_display_type),
-            codeChallenge,
-            null
+            "code" // Use code for web server flow
         )
 
-        return authorizationUri?.let {
+        return authorizationUri.let {
             it.path + (it.query?.let { query -> "?$query" } ?: "")
-        } ?: null
+        }
     }
 
     fun getFrontdoorUrl(restClient:RestClient, redirectUri: String): String? {
@@ -133,11 +129,15 @@ internal class IDPAuthCodeHelper private constructor(
             SalesforceSDKLogger.e(TAG, "Failed to obtain valid front door url", e)
             null
         }
-        return if (restResponse == null || !restResponse.isSuccess) null else restResponse.asJSONObject().getString(FRONTDOOR_URL_KEY)
+        return if (restResponse == null || !restResponse.isSuccess()) null else restResponse.asJSONObject().getString(FRONTDOOR_URL_KEY)
     }
 
-    private fun onError(error: String, exception: java.lang.Exception? = null) {
-        SalesforceSDKLogger.e(TAG, "Auth code obtention failed: $error", exception)
+    private fun onError(error: String, exception: Throwable? = null) {
+        if (exception != null) {
+            SalesforceSDKLogger.e(TAG, "Auth code obtention failed: $error", exception)
+        } else {
+            SalesforceSDKLogger.e(TAG, "Auth code obtention failed: $error")
+        }
         onResult(Result(success = false, error = error))
     }
 
@@ -171,7 +171,7 @@ internal class IDPAuthCodeHelper private constructor(
              * loading a page through frontdoor. Until the server API returns an
              * error response, we look for 'ec=301' or 'ec=302' to handle this error case.
              */
-            val ec = uri.getQueryParameter(EC_KEY)
+            val ec = uri.getQueryParameter(EC_KEY) ?: ""
             return ec.equals("301") || ec.equals("302")
         }
 

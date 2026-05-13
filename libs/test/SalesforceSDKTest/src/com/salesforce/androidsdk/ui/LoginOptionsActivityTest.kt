@@ -129,8 +129,8 @@ class LoginOptionsActivityTest {
         val bootConfig = BootConfig.getBootConfig(composeTestRule.activity)
         
         // Check that boot config values are displayed
-        composeTestRule.onNodeWithText(bootConfig.remoteAccessConsumerKey).assertIsDisplayed()
-        composeTestRule.onNodeWithText(bootConfig.oauthRedirectURI).assertIsDisplayed()
+        composeTestRule.onNodeWithText(bootConfig.remoteAccessConsumerKey!!).assertIsDisplayed()
+        composeTestRule.onNodeWithText(bootConfig.oauthRedirectURI!!).assertIsDisplayed()
         
         val scopes = bootConfig.oauthScopes?.joinToString(separator = ", ") ?: ""
         if (scopes.isNotEmpty()) {

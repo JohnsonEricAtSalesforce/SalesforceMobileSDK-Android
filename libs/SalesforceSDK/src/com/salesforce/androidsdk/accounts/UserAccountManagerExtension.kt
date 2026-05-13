@@ -27,7 +27,6 @@
 package com.salesforce.androidsdk.accounts
 
 import android.content.Intent
-import com.salesforce.androidsdk.accounts.UserAccountManager.getInstance
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.config.OAuthConfig
 import com.salesforce.androidsdk.ui.TokenMigrationActivity
@@ -46,7 +45,7 @@ const val TAG = "UserAccountManager"
  */
 @Suppress("UnusedReceiverParameter")
 fun UserAccountManager.migrateRefreshToken(
-    userAccount: UserAccount? = getInstance().currentUser,
+    userAccount: UserAccount? = UserAccountManager.getInstance().currentUser,
     appConfig: OAuthConfig,
     onMigrationSuccess: (userAccount: UserAccount) -> Unit,
     onMigrationError: (error: String, errorDesc: String?, e: Throwable?) -> Unit,

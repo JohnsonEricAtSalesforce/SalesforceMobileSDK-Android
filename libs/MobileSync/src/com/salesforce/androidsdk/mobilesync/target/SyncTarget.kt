@@ -203,7 +203,7 @@ abstract class SyncTarget @JvmOverloads constructor(
             )
         } else {
             // Record came from server
-            smartStore.upsert(soupName, record, idFieldName, handleTx)
+            smartStore.upsert(soupName, record, idFieldName ?: "", handleTx)
         }
     }
 
@@ -232,7 +232,7 @@ abstract class SyncTarget @JvmOverloads constructor(
         syncId: Long
     ) {
         val smartStore = syncManager.smartStore
-        synchronized(smartStore.database) {
+        synchronized(smartStore.getDatabase()) {
             try {
                 smartStore.beginTransaction()
                 for (i in 0 until records.length()) {
@@ -358,10 +358,7 @@ abstract class SyncTarget @JvmOverloads constructor(
         soupName: String,
         storeIds: List<String>
     ): List<JSONObject> {
-        val storeIdsLong = arrayOfNulls<Long>(storeIds.size)
-        for (i in storeIds.indices) {
-            storeIdsLong[i] = valueOf(storeIds[i])
-        }
+        val storeIdsLong = storeIds.map { valueOf(it) }.filterNotNull().toLongArray()
         return JSONObjectHelper.toList(syncManager.smartStore.retrieve(soupName, *storeIdsLong))
     }
 

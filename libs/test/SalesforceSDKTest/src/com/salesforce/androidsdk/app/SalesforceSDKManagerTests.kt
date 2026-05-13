@@ -4,9 +4,9 @@ import android.app.Activity
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SmallTest
 import com.salesforce.androidsdk.auth.HttpAccess
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.PRODUCTION_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.WELCOME_LOGIN_URL
 import com.salesforce.androidsdk.config.LoginServerManager.LoginServer
-import com.salesforce.androidsdk.config.LoginServerManager.PRODUCTION_LOGIN_URL
-import com.salesforce.androidsdk.config.LoginServerManager.WELCOME_LOGIN_URL
 import com.salesforce.androidsdk.ui.LoginActivity
 import io.mockk.every
 import io.mockk.just

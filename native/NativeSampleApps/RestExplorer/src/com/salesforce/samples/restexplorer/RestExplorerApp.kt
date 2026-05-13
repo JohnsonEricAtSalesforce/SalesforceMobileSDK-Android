@@ -33,13 +33,13 @@ import android.util.Log
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogReceiver
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogReceiverFactory
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level
+import com.salesforce.androidsdk.analytics.logger.SalesforceLogger
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.DEBUG
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.ERROR
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.INFO
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.OFF
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.VERBOSE
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.WARN
-import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.setLogReceiverFactory
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager.Companion.getInstance
 import com.salesforce.androidsdk.ui.LoginActivity
@@ -78,7 +78,7 @@ internal class RestExplorerApp : Application() {
          */
         getInstance().setIDPAppPackageName("com.salesforce.samples.salesforceandroididptemplateapp")
 
-        setLogReceiverFactory(object : SalesforceLogReceiverFactory {
+        SalesforceLogger.setLogReceiverFactory(object : SalesforceLogReceiverFactory {
             override fun create(componentName: String): SalesforceLogReceiver = logReceiversByComponentName[componentName] ?: object : SalesforceLogReceiver {
                 override fun receive(
                     level: Level,

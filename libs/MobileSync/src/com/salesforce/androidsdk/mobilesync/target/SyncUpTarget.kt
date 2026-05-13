@@ -172,10 +172,9 @@ open class SyncUpTarget : SyncTarget {
             createFieldlist ?: fieldlist ?: throw MobileSyncException("No fields specified")
         val objectType = SmartStore.project(record, Constants.SOBJECT_TYPE) as? String ?: "null"
         val fields = buildFieldsMap(record, fieldlistToUse, idFieldName, modificationDateFieldName)
-        val externalId = if (externalIdFieldName != null) JSONObjectHelper.optString(
-            record,
-            externalIdFieldName
-        ) else null
+        val externalId = externalIdFieldName?.let {
+            JSONObjectHelper.optString(record, it)
+        }
         return if (externalId != null // the following check is there for the case
             // where the the external id field is the id field
             // and the field is populated by a local id
@@ -228,7 +227,7 @@ open class SyncUpTarget : SyncTarget {
         val request = RestRequest.getRequestForUpsert(
             syncManager.apiVersion,
             objectType,
-            externalIdFieldName,
+            externalIdFieldName ?: "",
             externalId,
             fields
         )
@@ -247,10 +246,10 @@ open class SyncUpTarget : SyncTarget {
         request: RestRequest
     ): String? {
         val response = syncManager.sendSyncWithMobileSyncUserAgent(request)
-        if (!response.isSuccess) {
+        if (!response.isSuccess()) {
             lastError = response.asString()
         }
-        return if (response.isSuccess) response.asJSONObject().getString(Constants.LID) else null
+        return if (response.isSuccess()) response.asJSONObject().getString(Constants.LID) else null
     }
 
     /**
@@ -285,10 +284,10 @@ open class SyncUpTarget : SyncTarget {
     ): Int {
         val request = RestRequest.getRequestForDelete(syncManager.apiVersion, objectType, objectId)
         val response = syncManager.sendSyncWithMobileSyncUserAgent(request)
-        if (!response.isSuccess) {
+        if (!response.isSuccess()) {
             lastError = response.asString()
         }
-        return response.statusCode
+        return response.getStatusCode()
     }
 
     /**
@@ -334,10 +333,10 @@ open class SyncUpTarget : SyncTarget {
         val request =
             RestRequest.getRequestForUpdate(syncManager.apiVersion, objectType, objectId, fields)
         val response = syncManager.sendSyncWithMobileSyncUserAgent(request)
-        if (!response.isSuccess) {
+        if (!response.isSuccess()) {
             lastError = response.asString()
         }
-        return response.statusCode
+        return response.getStatusCode()
     }
 
     /**
@@ -360,10 +359,10 @@ open class SyncUpTarget : SyncTarget {
         )
         val lastModResponse = syncManager.sendSyncWithMobileSyncUserAgent(lastModRequest)
         return RecordModDate(
-            if (lastModResponse.isSuccess) lastModResponse.asJSONObject().getString(
+            if (lastModResponse.isSuccess()) lastModResponse.asJSONObject().getString(
                 modificationDateFieldName
             ) else null,
-            lastModResponse.statusCode == HttpURLConnection.HTTP_NOT_FOUND
+            lastModResponse.getStatusCode() == HttpURLConnection.HTTP_NOT_FOUND
         )
     }
 

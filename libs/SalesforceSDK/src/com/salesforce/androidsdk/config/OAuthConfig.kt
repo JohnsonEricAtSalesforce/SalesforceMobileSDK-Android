@@ -37,23 +37,23 @@ data class OAuthConfig(
 ): Parcelable {
     
     internal constructor(bootConfig: BootConfig): this(
-        bootConfig.remoteAccessConsumerKey,
-        bootConfig.oauthRedirectURI,
-        scopes = bootConfig.oauthScopes?.ifEmpty { null }?.toList(),
+        bootConfig.getRemoteAccessConsumerKey() ?: "",
+        bootConfig.getOauthRedirectURI() ?: "",
+        scopes = bootConfig.getOauthScopes()?.ifEmpty { null }?.toList(),
     )
 
     // Used by LoginOptionsActivity
-    internal constructor(consumerKey: String, redirectUri: String, scopes: String): this(
+    internal constructor(consumerKey: String, redirectUri: String, scopes: String?): this(
         consumerKey.trim(),
         redirectUri.trim(),
-        scopes = with(scopes) {
-            if (isNullOrBlank()) return@with null
+        scopes = scopes?.let {
+            if (it.isBlank()) return@let null
 
-            return@with if (contains(",")) {
-                split(",")
+            if (it.contains(",")) {
+                it.split(",")
             } else {
-                split(" ")
-            }.map { it.trim() }
+                it.split(" ")
+            }.map { scope -> scope.trim() }
         }
     )
 

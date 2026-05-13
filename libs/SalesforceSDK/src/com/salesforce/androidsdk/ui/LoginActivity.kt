@@ -134,9 +134,9 @@ import com.salesforce.androidsdk.auth.OAuth2.TokenEndpointResponse
 import com.salesforce.androidsdk.auth.OAuth2.swapJWTForTokens
 import com.salesforce.androidsdk.auth.idp.interfaces.SPManager.Status
 import com.salesforce.androidsdk.auth.idp.interfaces.SPManager.StatusUpdateCallback
+import com.salesforce.androidsdk.config.RuntimeConfig
 import com.salesforce.androidsdk.config.RuntimeConfig.ConfigKey.ManagedAppCertAlias
 import com.salesforce.androidsdk.config.RuntimeConfig.ConfigKey.RequireCertAuth
-import com.salesforce.androidsdk.config.RuntimeConfig.getRuntimeConfig
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager
 import com.salesforce.androidsdk.ui.components.LoginView
 import com.salesforce.androidsdk.util.EventsObservable
@@ -445,7 +445,7 @@ open class LoginActivity : FragmentActivity() {
     protected open fun certAuthOrLogin() {
         when {
             shouldUseCertBasedAuth() -> {
-                val managedAppAlias = getRuntimeConfig(this).getString(ManagedAppCertAlias)
+                val managedAppAlias = RuntimeConfig.getRuntimeConfig(this).getString(ManagedAppCertAlias) ?: ""
                 d(TAG, "Cert based login flow being triggered with alias: $managedAppAlias")
                 choosePrivateKeyAlias(
                     this,
@@ -483,7 +483,7 @@ open class LoginActivity : FragmentActivity() {
      * false otherwise
      */
     protected open fun shouldUseCertBasedAuth(): Boolean =
-        getRuntimeConfig(this).getBoolean(RequireCertAuth)
+        RuntimeConfig.getRuntimeConfig(this).getBoolean(RequireCertAuth)
 
     /**
      * A fix for the back button's behavior.
@@ -536,7 +536,11 @@ open class LoginActivity : FragmentActivity() {
         viewModel.authFinished.value = false
         // - Salesforce Identity UI Bridge API log in, such as QR code login.
         viewModel.resetFrontDoorBridgeUrl()
-        e(TAG, "$error: $errorDesc", e)
+        if (e != null) {
+            e(TAG, "$error: $errorDesc", e)
+        } else {
+            e(TAG, "$error: $errorDesc")
+        }
 
         // Broadcast a notification that the authentication flow failed
         SalesforceSDKManager.getInstance().appContext.sendBroadcast(
@@ -575,7 +579,7 @@ open class LoginActivity : FragmentActivity() {
     }
 
     private fun completeAdvAuthFlow(intent: Intent) {
-        val params = UriFragmentParser.parse(intent.data)
+        val params = UriFragmentParser.parse(intent.data ?: return)
         val error = params["error"]
         // Did we fail?
         when {
@@ -704,7 +708,10 @@ open class LoginActivity : FragmentActivity() {
             activity
         ) { client ->
             runCatching {
-                client.oAuthRefreshInterceptor.refreshAccessToken()
+                client?.let { restClient ->
+                    // Access the token refresher directly for token refresh
+                    restClient.getOAuthRefreshInterceptor().refreshAccessToken()
+                }
             }.onFailure { e ->
                 e(TAG, "Error encountered while unlocking.", e)
             }
@@ -811,7 +818,8 @@ open class LoginActivity : FragmentActivity() {
                 if (viewModel.jwt.isNullOrBlank()) {
                     return@launch
                 } else {
-                    swapJWTForTokens(HttpAccess.DEFAULT, URI(viewModel.loginUrl.value), viewModel.jwt)
+                    val jwt = viewModel.jwt ?: return@launch
+                    swapJWTForTokens(HttpAccess.DEFAULT ?: throw IllegalStateException("HttpAccess.DEFAULT is null"), URI(viewModel.loginUrl.value), jwt)
                 }
             }.onFailure { throwable: Throwable ->
                 jwtFlowError(throwable)
@@ -873,7 +881,7 @@ open class LoginActivity : FragmentActivity() {
         val uiBridgeApiParametersConsumerKey = uiBridgeApiParameters?.frontdoorBridgeUrl?.toUri()?.getQueryParameter("startURL")?.toUri()?.getQueryParameter("client_id")
 
         // Choose front door bridge use by verifying intent data and such that only front door bridge URLs with matching consumer keys are used.
-        val uiBridgeApiParametersFrontDoorBridgeUrlMismatchedConsumerKey = uiBridgeApiParametersConsumerKey != null && uiBridgeApiParametersConsumerKey != viewModel.bootConfig.remoteAccessConsumerKey
+        val uiBridgeApiParametersFrontDoorBridgeUrlMismatchedConsumerKey = uiBridgeApiParametersConsumerKey != null && uiBridgeApiParametersConsumerKey != viewModel.bootConfig.getRemoteAccessConsumerKey()
         viewModel.isUsingFrontDoorBridge = (isFrontdoorBridgeUrlIntent(intent) || isQrCodeLoginUrlIntent(intent)) && !uiBridgeApiParametersFrontDoorBridgeUrlMismatchedConsumerKey
 
         // Alert the user if the front door bridge URL is not for this app and was discarded.
@@ -1126,7 +1134,7 @@ open class LoginActivity : FragmentActivity() {
             // Check if user entered a custom domain
             val customDomainPatternMatch = SalesforceSDKManager.getInstance()
                 .customDomainInferencePattern?.matcher(request.url.toString())?.find() ?: false
-            val loginContainsHost = request.url.host?.let { viewModel.selectedServer.value?.contains(it) } ?: false
+            val loginContainsHost = request.url.host?.let { host -> viewModel.selectedServer.value?.contains(host) } ?: false
             if (customDomainPatternMatch && !loginContainsHost) {
                 runCatching {
                     val baseUrl = "https://${request.url.host}"
@@ -1139,7 +1147,7 @@ open class LoginActivity : FragmentActivity() {
                             serverManager.addCustomLoginServer("Custom Domain", baseUrl)
 
                         else ->
-                            serverManager.selectedLoginServer = loginServer
+                            serverManager.setSelectedLoginServer(loginServer)
                     }
                 }.onFailure { throwable ->
                     e(TAG, "Unable to retrieve auth config.", throwable)

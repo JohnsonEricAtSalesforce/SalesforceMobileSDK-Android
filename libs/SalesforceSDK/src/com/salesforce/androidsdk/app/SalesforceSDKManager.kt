@@ -78,7 +78,7 @@ import com.salesforce.androidsdk.R.style.SalesforceSDK_AlertDialog
 import com.salesforce.androidsdk.R.style.SalesforceSDK_AlertDialog_Dark
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.accounts.UserAccountManager
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_LOGOUT
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_LOGOUT
 import com.salesforce.androidsdk.analytics.AnalyticsPublishingWorker.Companion.enqueueAnalyticsPublishWorkRequest
 import com.salesforce.androidsdk.analytics.SalesforceAnalyticsManager
 import com.salesforce.androidsdk.analytics.SalesforceAnalyticsManager.SalesforceAnalyticsPublishingType.PublishOnAppBackground
@@ -89,26 +89,25 @@ import com.salesforce.androidsdk.app.Features.FEATURE_BROWSER_LOGIN
 import com.salesforce.androidsdk.app.Features.FEATURE_NATIVE_LOGIN
 import com.salesforce.androidsdk.app.SalesforceSDKManager.Theme.DARK
 import com.salesforce.androidsdk.app.SalesforceSDKManager.Theme.SYSTEM_DEFAULT
-import com.salesforce.androidsdk.auth.AuthenticatorService.KEY_INSTANCE_URL
+import com.salesforce.androidsdk.auth.AuthenticatorService.Companion.KEY_INSTANCE_URL
 import com.salesforce.androidsdk.auth.HttpAccess
-import com.salesforce.androidsdk.auth.HttpAccess.DEFAULT
+import com.salesforce.androidsdk.auth.HttpAccess.Companion.DEFAULT
 import com.salesforce.androidsdk.auth.NativeLoginManager
 import com.salesforce.androidsdk.auth.OAuth2.LogoutReason
-import com.salesforce.androidsdk.auth.OAuth2.LogoutReason.UNKNOWN
 import com.salesforce.androidsdk.auth.OAuth2.revokeRefreshToken
 import com.salesforce.androidsdk.auth.idp.SPConfig
 import com.salesforce.androidsdk.auth.idp.interfaces.IDPManager
 import com.salesforce.androidsdk.auth.idp.interfaces.SPManager
 import com.salesforce.androidsdk.config.AdminPermsManager
 import com.salesforce.androidsdk.config.AdminSettingsManager
-import com.salesforce.androidsdk.config.BootConfig.getBootConfig
+import com.salesforce.androidsdk.config.BootConfig.Companion.getBootConfig
 import com.salesforce.androidsdk.config.LoginServerManager
-import com.salesforce.androidsdk.config.LoginServerManager.PRODUCTION_LOGIN_URL
-import com.salesforce.androidsdk.config.LoginServerManager.SANDBOX_LOGIN_URL
-import com.salesforce.androidsdk.config.LoginServerManager.WELCOME_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.PRODUCTION_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.SANDBOX_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.WELCOME_LOGIN_URL
 import com.salesforce.androidsdk.config.OAuthConfig
 import com.salesforce.androidsdk.config.RuntimeConfig.ConfigKey.IDPAppPackageName
-import com.salesforce.androidsdk.config.RuntimeConfig.getRuntimeConfig
+import com.salesforce.androidsdk.config.RuntimeConfig.Companion.getRuntimeConfig
 import com.salesforce.androidsdk.developer.support.DevSupportInfo
 import com.salesforce.androidsdk.developer.support.notifications.local.ShowDeveloperSupportNotifier.Companion.BROADCAST_INTENT_ACTION_SHOW_DEVELOPER_SUPPORT
 import com.salesforce.androidsdk.developer.support.notifications.local.ShowDeveloperSupportNotifier.Companion.hideDeveloperSupportNotification
@@ -673,7 +672,7 @@ open class SalesforceSDKManager protected constructor(
     fun invokeServerNotificationAction(
         notificationId: String,
         actionKey: String,
-        restClient: RestClient = clientManager.peekRestClient(userAccountManager.currentUser)
+        restClient: RestClient = clientManager.peekRestClient(userAccountManager.currentUser!!)
     ): NotificationsActionsResponseBody? {
         return NotificationsApiClient(
             restClient = restClient
@@ -748,7 +747,7 @@ open class SalesforceSDKManager protected constructor(
      *
      * @return True if a network connection is available
      */
-    fun hasNetwork() = DEFAULT.hasNetwork()
+    fun hasNetwork() = DEFAULT?.hasNetwork() ?: false
 
     /**
      * Cleans cached credentials and data.
@@ -996,7 +995,7 @@ open class SalesforceSDKManager protected constructor(
             account = account,
             frontActivity = frontActivity,
             showLoginPage = showLoginPage,
-            reason = UNKNOWN
+            reason = LogoutReason.USER_LOGOUT
         )
     }
 
@@ -1022,7 +1021,7 @@ open class SalesforceSDKManager protected constructor(
         account: Account? = null,
         frontActivity: Activity?,
         showLoginPage: Boolean = true,
-        reason: LogoutReason = UNKNOWN,
+        reason: LogoutReason = LogoutReason.USER_LOGOUT,
     ) {
         val clientMgr = ClientManager(
             appContext,
@@ -1030,7 +1029,7 @@ open class SalesforceSDKManager protected constructor(
             shouldLogoutWhenTokenRevoked()
         )
 
-        val accountToLogout = account ?: clientMgr.account
+        val accountToLogout = account ?: clientMgr.getAccount()
 
         isLoggingOut = true
         val mgr = AccountManager.get(appContext)
@@ -1124,10 +1123,9 @@ open class SalesforceSDKManager protected constructor(
             CoroutineScope(Default).launch {
                 runCatching {
                     revokeRefreshToken(
-                        DEFAULT,
+                        DEFAULT!!,
                         URI(loginServer),
                         refreshToken,
-                        logoutReason,
                     )
                 }.onFailure { e ->
                     w(TAG, "Revoking token failed", e)
@@ -1872,7 +1870,7 @@ open class SalesforceSDKManager protected constructor(
         /** The active encryption key */
         @JvmStatic
         val encryptionKey: String
-            get() = getEncryptionKey(INTERNAL_ENTROPY)
+            get() = SalesforceKeyGenerator.getEncryptionKey(INTERNAL_ENTROPY) ?: ""
 
         /**
          * Decrypts the provided data with the provided key.
@@ -1902,7 +1900,7 @@ open class SalesforceSDKManager protected constructor(
     ) = CoroutineScope(Default).launch {
         // If this takes more than five seconds it can cause Android's application not responding report.
         withTimeoutOrNull(5000L) {
-            val loginServer = loginServerManager.selectedLoginServer.url.trim()
+            val loginServer = loginServerManager.getSelectedLoginServer()?.url?.trim() ?: return@withTimeoutOrNull
             if (loginServer == PRODUCTION_LOGIN_URL || loginServer == WELCOME_LOGIN_URL || loginServer == SANDBOX_LOGIN_URL || !isHttpsUrl(loginServer) || loginServer.toHttpUrlOrNull() == null) {
                 setBrowserLoginEnabled(
                     browserLoginEnabled = false,
@@ -1914,8 +1912,8 @@ open class SalesforceSDKManager protected constructor(
 
             getMyDomainAuthConfig(httpAccess, loginServer).let { authConfig ->
                 setBrowserLoginEnabled(
-                    browserLoginEnabled = authConfig?.isBrowserLoginEnabled ?: false,
-                    shareBrowserSessionEnabled = authConfig?.isShareBrowserSessionEnabled ?: false
+                    browserLoginEnabled = authConfig?.isBrowserLoginEnabled() ?: false,
+                    shareBrowserSessionEnabled = authConfig?.isShareBrowserSessionEnabled() ?: false
                 )
             }
         }

@@ -182,7 +182,7 @@ class OAuthConfigTest {
         val config = OAuthConfig(
             consumerKey = "test_consumer_key",
             redirectUri = "test://callback",
-            scopes = null
+            scopes = null as List<String>?
         )
 
         assertEquals("", config.scopesString)

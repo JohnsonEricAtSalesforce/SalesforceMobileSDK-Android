@@ -56,7 +56,7 @@ object ParentChildrenSyncTargetHelper {
         syncId: Long
     ) {
         val smartStore = syncManager.smartStore
-        synchronized(smartStore.database) {
+        synchronized(smartStore.getDatabase()) {
             try {
                 smartStore.beginTransaction()
                 for (i in 0 until recordTrees.length()) {

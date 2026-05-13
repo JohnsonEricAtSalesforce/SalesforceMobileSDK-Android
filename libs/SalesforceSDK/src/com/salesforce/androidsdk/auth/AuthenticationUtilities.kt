@@ -39,9 +39,9 @@ import com.salesforce.androidsdk.R.string.sf__managed_app_error
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.accounts.UserAccountManager
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_DEFAULT
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_FIRST_LOGIN
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_LOGIN
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_DEFAULT
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_FIRST_LOGIN
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_LOGIN
 import com.salesforce.androidsdk.analytics.EventBuilderHelper.createAndStoreEventSync
 import com.salesforce.androidsdk.analytics.SalesforceAnalyticsManager
 import com.salesforce.androidsdk.app.Features.FEATURE_BIOMETRIC_AUTH
@@ -53,9 +53,9 @@ import com.salesforce.androidsdk.auth.OAuth2.addAuthorizationHeader
 import com.salesforce.androidsdk.auth.OAuth2.callIdentityService
 import com.salesforce.androidsdk.config.LoginServerManager
 import com.salesforce.androidsdk.config.RuntimeConfig
-import com.salesforce.androidsdk.config.RuntimeConfig.getRuntimeConfig
+import com.salesforce.androidsdk.config.RuntimeConfig.Companion.getRuntimeConfig
 import com.salesforce.androidsdk.push.PushMessaging.register
-import com.salesforce.androidsdk.rest.RestClient.clearCaches
+import com.salesforce.androidsdk.rest.RestClient.Companion.clearCaches
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager.Companion.isBiometricAuthenticationEnabled
 import com.salesforce.androidsdk.security.ScreenLockManager
@@ -149,7 +149,7 @@ internal suspend fun onAuthFlowComplete(
 
     val userIdentity = actualFetchUserIdentity(tokenResponse)
     val mustBeManagedApp = userIdentity?.customPermissions?.optBoolean(MUST_BE_MANAGED_APP_PERM) ?: false
-    if (mustBeManagedApp && !runtimeConfig.isManagedApp) {
+    if (mustBeManagedApp && !runtimeConfig.isManagedApp()) {
         onAuthFlowError(
             context.getString(sf__generic_authentication_error_title),
             context.getString(sf__managed_app_error), null
@@ -245,7 +245,7 @@ private fun fetchIsSalesforceIntegrationUser(
     )
     val request = builder.build()
 
-    val clientBuilder = HttpAccess.DEFAULT.okHttpClient.newBuilder()
+    val clientBuilder = HttpAccess.DEFAULT?.getOkHttpClient()?.newBuilder() ?: return false
     clientBuilder.addNetworkInterceptor { chain: Interceptor.Chain ->
         val url = chain.request().url
         val interceptedRequestBuilder = chain.request().newBuilder()
@@ -302,7 +302,7 @@ private fun logAddAccount(account: UserAccount?, loginServerManager: LoginServer
     runCatching {
         val users = UserAccountManager.getInstance().authenticatedUsers
         attributes.put("numUsers", users?.size ?: 0)
-        val servers = loginServerManager.loginServers
+        val servers = loginServerManager.getLoginServers()
         attributes.put("numLoginServers", servers?.size ?: 0)
         servers?.let { serversUnwrapped ->
             val serversJson = JSONArray()
@@ -328,9 +328,9 @@ private suspend fun fetchUserIdentity(
     return runCatching {
         withContext(Default) {
             callIdentityService(
-                HttpAccess.DEFAULT,
-                tokenResponse.idUrlWithInstance,
-                tokenResponse.authToken,
+                HttpAccess.DEFAULT!!,
+                tokenResponse.idUrlWithInstance ?: "",
+                tokenResponse.authToken ?: "",
             )
         }
     }.onFailure { throwable ->
@@ -456,12 +456,12 @@ internal fun handleDuplicateUserAccount(
     userAccountManager: UserAccountManager,
     account: UserAccount,
     userIdentity: OAuth2.IdServiceResponse?,
-    revokeRefreshToken: (HttpAccess, URI, String, OAuth2.LogoutReason) -> Unit = OAuth2::revokeRefreshToken,
+    revokeRefreshToken: (HttpAccess, URI, String?) -> Unit = OAuth2::revokeRefreshToken,
 ) {
     userAccountManager.authenticatedUsers?.let { existingUsers ->
         // Check if the user already exists
         if (existingUsers.contains(account)) {
-            val duplicateUserAccount = existingUsers.removeAt(existingUsers.indexOf(account))
+            val duplicateUserAccount = existingUsers.toMutableList().removeAt(existingUsers.indexOf(account))
             clearCaches()
             userAccountManager.clearCachedCurrentUser()
 
@@ -479,10 +479,9 @@ internal fun handleDuplicateUserAccount(
                     }
                     CoroutineScope(IO).launch {
                         revokeRefreshToken(
-                            HttpAccess.DEFAULT,
+                            HttpAccess.DEFAULT!!,
                             uri,
                             duplicateUserAccount.refreshToken,
-                            OAuth2.LogoutReason.REFRESH_TOKEN_ROTATED,
                         )
                     }
                 }
@@ -493,9 +492,9 @@ internal fun handleDuplicateUserAccount(
         if (userIdentity?.biometricAuth == true) {
             existingUsers.forEach(Consumer { existingUser ->
                 if (isBiometricAuthenticationEnabled(existingUser)) {
-                    // This is an unexpected logout(s) because we only support one Bio Auth user.
+                    // This is a biometric enrollment changed logout(s) because we only support one Bio Auth user.
                     userAccountManager.signoutUser(
-                        existingUser, null, false, OAuth2.LogoutReason.UNEXPECTED
+                        existingUser, null, false, OAuth2.LogoutReason.BIOMETRIC_ENROLLMENT_CHANGED
                     )
                 }
             })
@@ -511,11 +510,11 @@ internal fun handleDuplicateUserAccount(
  */
 private fun UserAccountManager.persistAccount(
     userAccount: UserAccount,
-    accountType: String = SalesforceSDKManager.getInstance().accountType,
+    accountType: String = SalesforceSDKManager.getInstance().accountType ?: "",
     acctManager: AccountManager = AccountManager.get(SalesforceSDKManager.getInstance().appContext),
 ) {
-    val account = Account(userAccount.accountName, accountType)
-    val password = SalesforceSDKManager.encrypt(userAccount.refreshToken, encryptionKey)
+    val account = Account(userAccount.accountName ?: "", accountType)
+    val password = SalesforceSDKManager.encrypt(userAccount.refreshToken, encryptionKey) ?: ""
     val created = acctManager.addAccountExplicitly(account, password, /* userdata = */ Bundle())
 
     // addAccountExplicitly fails if the account already exists, so update the refresh token.

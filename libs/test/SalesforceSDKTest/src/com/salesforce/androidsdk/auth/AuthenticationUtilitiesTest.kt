@@ -88,7 +88,7 @@ class AuthenticationUtilitiesTest {
         testContext = InstrumentationRegistry.getInstrumentation().targetContext
 
         // Setup mock runtime config
-        every { mockRuntimeConfig.isManagedApp } returns false
+        every { mockRuntimeConfig.isManagedApp() } returns false
 
         // Setup mock user account manager
         every { mockUserAccountManager.authenticatedUsers } returns mutableListOf()
@@ -138,7 +138,7 @@ class AuthenticationUtilitiesTest {
         )
 
         coEvery { fetchUserIdentity.invoke(any()) } returns userIdentityWithManagedAppRequirement
-        every { mockRuntimeConfig.isManagedApp } returns false
+        every { mockRuntimeConfig.isManagedApp() } returns false
 
         // When
         callOnAuthFlowComplete()
@@ -366,7 +366,7 @@ class AuthenticationUtilitiesTest {
             }
         )
         coEvery { fetchUserIdentity.invoke(any()) } returns userIdentityWithManagedAppRequirement
-        every { mockRuntimeConfig.isManagedApp } returns false
+        every { mockRuntimeConfig.isManagedApp() } returns false
 
         // When - tokenMigration is true but managed app required
         callOnAuthFlowComplete(tokenMigration = true)
@@ -701,7 +701,7 @@ class AuthenticationUtilitiesTest {
         // Given
         val mockClientManager = mockk<ClientManager>(relaxed = true)
         setupMockSdkManager(clientManager = mockClientManager)
-        val mockRevokeRefreshToken = mockk<(HttpAccess, URI, String, OAuth2.LogoutReason) -> Unit>(relaxed = true)
+        val mockRevokeRefreshToken = mockk<(HttpAccess, URI, String?) -> Unit>(relaxed = true)
 
         val duplicateUser = buildTestUserAccount(
             refreshToken = "old_token",
@@ -724,8 +724,7 @@ class AuthenticationUtilitiesTest {
             mockRevokeRefreshToken.invoke(
                 any(),
                 any(),
-                eq("old_token"),
-                eq(OAuth2.LogoutReason.REFRESH_TOKEN_ROTATED)
+                eq("old_token")
             )
         }
     }
@@ -740,7 +739,7 @@ class AuthenticationUtilitiesTest {
             clientManager = mockClientManager
         )
         setupBiometricEnabledPrefs(mockSdkManager)
-        val mockRevokeRefreshToken = mockk<(HttpAccess, URI, String, OAuth2.LogoutReason) -> Unit>(relaxed = true)
+        val mockRevokeRefreshToken = mockk<(HttpAccess, URI, String?) -> Unit>(relaxed = true)
 
         val duplicateUser = buildTestUserAccount(
             refreshToken = "old_token",
@@ -763,8 +762,7 @@ class AuthenticationUtilitiesTest {
             mockRevokeRefreshToken.invoke(
                 any(),
                 any(),
-                eq("old_token"),
-                eq(OAuth2.LogoutReason.REFRESH_TOKEN_ROTATED)
+                eq("old_token")
             )
         }
     }
@@ -788,7 +786,7 @@ class AuthenticationUtilitiesTest {
         com.salesforce.androidsdk.auth.handleDuplicateUserAccount(mockUam, account, userIdentity)
 
         // Then
-        verify { mockUam.signoutUser(existingBioUser, null, false, OAuth2.LogoutReason.UNEXPECTED) }
+        verify { mockUam.signoutUser(existingBioUser, null, false, OAuth2.LogoutReason.USER_LOGOUT) }
     }
 
     @Test

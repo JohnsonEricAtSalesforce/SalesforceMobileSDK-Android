@@ -65,8 +65,8 @@ import com.salesforce.androidsdk.auth.onAuthFlowComplete
 import com.salesforce.androidsdk.config.BootConfig
 import com.salesforce.androidsdk.config.LoginServerManager.LoginServer
 import com.salesforce.androidsdk.config.OAuthConfig
+import com.salesforce.androidsdk.config.RuntimeConfig
 import com.salesforce.androidsdk.config.RuntimeConfig.ConfigKey.OnlyShowAuthorizedHosts
-import com.salesforce.androidsdk.config.RuntimeConfig.getRuntimeConfig
 import com.salesforce.androidsdk.security.SalesforceKeyGenerator.getRandom128ByteKey
 import com.salesforce.androidsdk.security.SalesforceKeyGenerator.getSHA256Hash
 import com.salesforce.androidsdk.ui.LoginActivity.Companion.ABOUT_BLANK
@@ -166,7 +166,7 @@ open class LoginViewModel(val bootConfig: BootConfig) : ViewModel() {
     internal val defaultTitleText: String
         get() = if (loginUrl.value == ABOUT_BLANK) "" else selectedServer.value ?: ""
 
-    internal val serverPickerAddConnectionButtonVisible = !getRuntimeConfig(SalesforceSDKManager.getInstance().appContext).getBoolean(OnlyShowAuthorizedHosts)
+    internal val serverPickerAddConnectionButtonVisible = !RuntimeConfig.getRuntimeConfig(SalesforceSDKManager.getInstance().appContext).getBoolean(OnlyShowAuthorizedHosts)
 
     /** Additional Auth Values used for login. */
     open var additionalParameters = hashMapOf<String, String>()
@@ -178,7 +178,7 @@ open class LoginViewModel(val bootConfig: BootConfig) : ViewModel() {
     @Deprecated("Will be removed in Mobile SDK 14.0, please use " +
             "SalesforceSDKManager.getInstance().appConfigForLoginHost.")
     @VisibleForTesting(PROTECTED)
-    internal open var clientId: String = bootConfig.remoteAccessConsumerKey
+    internal open var clientId: String = bootConfig.getRemoteAccessConsumerKey() ?: ""
 
     /** Authorization Display Type used for login. */
     protected open val authorizationDisplayType =
@@ -250,7 +250,7 @@ open class LoginViewModel(val bootConfig: BootConfig) : ViewModel() {
 
     @VisibleForTesting
     internal val consumerKey: String
-        get() = if (clientId != bootConfig.remoteAccessConsumerKey) {
+        get() = if (clientId != bootConfig.getRemoteAccessConsumerKey()) {
             clientId
         } else {
             oAuthConfig.consumerKey
@@ -480,16 +480,7 @@ open class LoginViewModel(val bootConfig: BootConfig) : ViewModel() {
         // The Salesforce Welcome login hint is only used once.
         loginHint = null
 
-        return@withContext when {
-            jwtFlow -> getFrontdoorUrl(
-                authorizationUrl,
-                authCodeForJwtFlow,
-                selectedServer.value,
-                mapOf<String, String>()
-            )
-
-            else -> authorizationUrl
-        }.toString()
+        return@withContext authorizationUrl.toString()
     }
 
     @VisibleForTesting
@@ -509,11 +500,11 @@ open class LoginViewModel(val bootConfig: BootConfig) : ViewModel() {
             val verifier = if (isUsingFrontDoorBridge) frontdoorBridgeCodeVerifier else codeVerifier
 
             val tokenResponse = exchangeCode(
-                HttpAccess.DEFAULT,
-                URI.create(server),
+                HttpAccess.DEFAULT ?: throw IllegalStateException("HttpAccess.DEFAULT is null"),
+                URI.create(server ?: ""),
                 consumerKey,
-                code,
-                verifier,
+                code ?: "",
+                verifier ?: "",
                 oAuthConfig.redirectUri,
             )
 

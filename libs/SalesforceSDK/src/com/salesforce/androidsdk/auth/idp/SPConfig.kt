@@ -47,9 +47,9 @@ data class SPConfig (
                 SPConfig(
                     appPackageName = sdkMgr.appContext.packageName,
                     componentName = sdkMgr.mainActivityClass.name,
-                    oauthClientId = remoteAccessConsumerKey,
-                    oauthCallbackUrl = oauthRedirectURI,
-                    oauthScopes = oauthScopes,
+                    oauthClientId = getRemoteAccessConsumerKey() ?: "",
+                    oauthCallbackUrl = getOauthRedirectURI() ?: "",
+                    oauthScopes = getOauthScopes() ?: emptyArray(),
                 )
             }
         }
