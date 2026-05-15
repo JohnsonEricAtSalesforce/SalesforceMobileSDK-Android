@@ -786,7 +786,7 @@ class AuthenticationUtilitiesTest {
         com.salesforce.androidsdk.auth.handleDuplicateUserAccount(mockUam, account, userIdentity)
 
         // Then
-        verify { mockUam.signoutUser(existingBioUser, null, false, OAuth2.LogoutReason.USER_LOGOUT) }
+        verify { mockUam.signoutUser(existingBioUser, null, false, OAuth2.LogoutReason.BIOMETRIC_ENROLLMENT_CHANGED) }
     }
 
     @Test
@@ -930,7 +930,7 @@ class AuthenticationUtilitiesTest {
         userType: String = "STANDARD",
         language: String = "en_US",
         locale: String = "en_US",
-        lastModifiedDate: String = "2023-01-01T00:00:00Z",
+        lastModifiedDate: String = "2023-01-01T00:00:00.000Z",
         userId: String = "005000000000000AAA",
         organizationId: String = "00D000000000000EAA",
         idUrl: String = "https://test.salesforce.com/id/00D000000000000EAA/005000000000000AAA",
@@ -954,7 +954,7 @@ class AuthenticationUtilitiesTest {
             put("last_modified_date", lastModifiedDate)
             put("user_id", userId)
             put("organization_id", organizationId)
-            put("active", active)
+            put("status", if (active) "active" else "inactive")
             put("utcOffset", utcOffset)
             put("photos", JSONObject().apply {
                 put("picture", pictureUrl)

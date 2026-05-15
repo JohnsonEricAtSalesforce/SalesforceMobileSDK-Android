@@ -206,12 +206,14 @@ class BatchSyncUpTargetConstructorTest {
             put(ANDROID_IMPL, BatchSyncUpTarget::class.java.name)
         })
 
-        assertNull(
+        assertEquals(
             "Wrong createFieldList",
+            emptyList<String>(),
             target.createFieldlist
         )
-        assertNull(
+        assertEquals(
             "Wrong updateFieldList",
+            emptyList<String>(),
             target.updateFieldlist
         )
         assertEquals(

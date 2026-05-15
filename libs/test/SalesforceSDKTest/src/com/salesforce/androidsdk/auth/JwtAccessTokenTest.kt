@@ -6,6 +6,7 @@ import org.junit.Test
 import java.text.SimpleDateFormat
 import java.util.Base64
 import java.util.Locale
+import java.util.TimeZone
 
 class JwtAccessTokenTest {
 
@@ -45,7 +46,8 @@ class JwtAccessTokenTest {
         val decodedJwt = JwtAccessToken(TEST_RAW_JWT)
         Assert.assertNotNull(decodedJwt)
         val dateFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        Assert.assertEquals("2024-10-31 07:58:15", dateFormatter.format(decodedJwt.expirationDate()))
+        dateFormatter.timeZone = TimeZone.getTimeZone("UTC")
+        Assert.assertEquals("2024-10-31 14:58:15", dateFormatter.format(decodedJwt.expirationDate()))
     }
 
 

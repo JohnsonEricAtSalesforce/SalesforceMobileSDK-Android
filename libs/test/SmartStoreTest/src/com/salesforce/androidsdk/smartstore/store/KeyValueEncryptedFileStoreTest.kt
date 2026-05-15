@@ -570,24 +570,19 @@ class KeyValueEncryptedFileStoreTest {
         )
         Assert.assertNull("Value found for key when not expected", keyValueStore.getValue(""))
         Assert.assertEquals("Wrong count for store", 0, keyValueStore.count())
-
-        Assert.assertFalse(
-            "Save should have returned false for null key",
-            keyValueStore.saveValue(null!!, "value")
-        )
-        Assert.assertNull("Value found for key when not expected", keyValueStore.getValue(null!!))
-        Assert.assertEquals("Wrong count for store", 0, keyValueStore.count())
     }
 
-    /** Test saving invalid value */
+    /** Test saving invalid value - with Kotlin non-nullable types, null cannot be passed at compile time.
+     *  Testing empty value instead. */
     @Test
     fun testSaveValueInvalidValue() {
-        Assert.assertFalse(
-            "Save should have returned false for null value",
-            keyValueStore.saveValue("key", null!!)
+        // Kotlin enforces non-null String parameter, so we just verify the store handles empty values
+        Assert.assertTrue(
+            "Save should have returned true for empty value",
+            keyValueStore.saveValue("key", "")
         )
-        Assert.assertNull("Value found for key when not expected", keyValueStore.getValue("key"))
-        Assert.assertEquals("Wrong count for store", 0, keyValueStore.count())
+        Assert.assertEquals("Wrong value for key", "", keyValueStore.getValue("key"))
+        Assert.assertEquals("Wrong count for store", 1, keyValueStore.count())
     }
 
     /** Test that data is indeed stored encrypted */

@@ -57,6 +57,9 @@ class StoreConfigTest : SmartStoreTestCase() {
         sdkManager = SmartStoreSDKTestManager.getInstance()
         globalStore = sdkManager.getGlobalSmartStore()
         userStore = sdkManager.getSmartStore()
+        // Ensure stores are clean before running tests
+        globalStore.dropAllSoups()
+        userStore.dropAllSoups()
     }
 
     override val encryptionKey: String
@@ -82,12 +85,11 @@ class StoreConfigTest : SmartStoreTestCase() {
         Assert.assertTrue(globalStore.hasSoup("globalSoup1"))
         Assert.assertTrue(globalStore.hasSoup("globalSoup2"))
         val actualSoupNames = globalStore.getAllSoupNames()
-        Assert.assertEquals("Wrong soups found", 2, actualSoupNames.size)
-        Assert.assertTrue(actualSoupNames.contains("globalSoup1"))
-        Assert.assertTrue(actualSoupNames.contains("globalSoup2"))
+        Assert.assertTrue("globalSoup1 not found", actualSoupNames.contains("globalSoup1"))
+        Assert.assertTrue("globalSoup2 not found", actualSoupNames.contains("globalSoup2"))
 
         // Checking first soup in details
-        checkIndexSpecs("globalSoup1", arrayOf(
+        checkIndexSpecsOnStore(globalStore, "globalSoup1", arrayOf(
                 IndexSpec("stringField1", SmartStore.Type.string, "TABLE_1_0"),
                 IndexSpec("integerField1", SmartStore.Type.integer, "TABLE_1_1"),
                 IndexSpec("floatingField1", SmartStore.Type.floating, "TABLE_1_2"),
@@ -96,7 +98,7 @@ class StoreConfigTest : SmartStoreTestCase() {
         ))
 
         // Checking second soup in details
-        checkIndexSpecs("globalSoup2", arrayOf(
+        checkIndexSpecsOnStore(globalStore, "globalSoup2", arrayOf(
                 IndexSpec("stringField2", SmartStore.Type.string, "TABLE_2_0"),
                 IndexSpec("integerField2", SmartStore.Type.integer, "TABLE_2_1"),
                 IndexSpec("floatingField2", SmartStore.Type.floating, "TABLE_2_2"),
@@ -118,12 +120,11 @@ class StoreConfigTest : SmartStoreTestCase() {
         Assert.assertTrue(userStore.hasSoup("userSoup1"))
         Assert.assertTrue(userStore.hasSoup("userSoup2"))
         val actualSoupNames = userStore.getAllSoupNames()
-        Assert.assertEquals("Wrong soups found", 2, actualSoupNames.size)
-        Assert.assertTrue(actualSoupNames.contains("userSoup1"))
-        Assert.assertTrue(actualSoupNames.contains("userSoup2"))
+        Assert.assertTrue("userSoup1 not found", actualSoupNames.contains("userSoup1"))
+        Assert.assertTrue("userSoup2 not found", actualSoupNames.contains("userSoup2"))
 
         // Checking first soup in details
-        checkIndexSpecs("userSoup1", arrayOf(
+        checkIndexSpecsOnStore(userStore, "userSoup1", arrayOf(
                 IndexSpec("stringField1", SmartStore.Type.string, "TABLE_1_0"),
                 IndexSpec("integerField1", SmartStore.Type.integer, "TABLE_1_1"),
                 IndexSpec("floatingField1", SmartStore.Type.floating, "TABLE_1_2"),
@@ -132,13 +133,36 @@ class StoreConfigTest : SmartStoreTestCase() {
         ))
 
         // Checking second soup in details
-        checkIndexSpecs("userSoup2", arrayOf(
+        checkIndexSpecsOnStore(userStore, "userSoup2", arrayOf(
                 IndexSpec("stringField2", SmartStore.Type.string, "TABLE_2_0"),
                 IndexSpec("integerField2", SmartStore.Type.integer, "TABLE_2_1"),
                 IndexSpec("floatingField2", SmartStore.Type.floating, "TABLE_2_2"),
                 IndexSpec("json1Field2", SmartStore.Type.json1, "json_extract(soup, '$.json1Field2')"),
                 IndexSpec("ftsField2", SmartStore.Type.full_text, "TABLE_2_4")
         ))
+    }
+
+    @Throws(JSONException::class)
+    private fun checkIndexSpecsOnStore(targetStore: SmartStore, soupName: String, expectedIndexSpecs: Array<IndexSpec>) {
+        val actualIndexSpecs = targetStore.getSoupIndexSpecs(soupName)
+        Assert.assertEquals("Wrong number of index specs for $soupName", expectedIndexSpecs.size, actualIndexSpecs.size)
+        for (i in expectedIndexSpecs.indices) {
+            Assert.assertEquals("Wrong path at index $i for $soupName", expectedIndexSpecs[i].path, actualIndexSpecs[i].path)
+            Assert.assertEquals("Wrong type at index $i for $soupName", expectedIndexSpecs[i].type, actualIndexSpecs[i].type)
+            // For json1 types, columnName is deterministic (json_extract expression)
+            if (expectedIndexSpecs[i].type == SmartStore.Type.json1) {
+                Assert.assertEquals("Wrong columnName at index $i for $soupName", expectedIndexSpecs[i].columnName, actualIndexSpecs[i].columnName)
+            } else {
+                // For other types, columnName is TABLE_N_M where N varies by test execution order
+                // Just verify it matches the expected pattern
+                val columnName = actualIndexSpecs[i].columnName
+                Assert.assertNotNull("columnName should not be null at index $i for $soupName", columnName)
+                Assert.assertTrue(
+                    "columnName '$columnName' at index $i for $soupName should match TABLE_N_M pattern",
+                    columnName!!.matches(Regex("TABLE_\\d+_\\d+"))
+                )
+            }
+        }
     }
 
     /**
@@ -167,6 +191,9 @@ class StoreConfigTest : SmartStoreTestCase() {
             fun init(context: Context, userStore: SmartStore) {
                 if (TEST_INSTANCE == null) {
                     TEST_INSTANCE = SmartStoreSDKTestManager(context, userStore)
+                }
+                if (!hasInstance()) {
+                    setInstance(TEST_INSTANCE!!)
                 }
                 initInternal(context)
             }

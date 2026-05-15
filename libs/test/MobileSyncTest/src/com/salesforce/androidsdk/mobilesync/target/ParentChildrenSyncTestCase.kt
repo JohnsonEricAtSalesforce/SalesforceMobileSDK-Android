@@ -434,7 +434,7 @@ open class ParentChildrenSyncTestCase : SyncManagerTestCase() {
     /**
      * Useful enum for trySyncUpsWithVariousChanges
      */
-    protected enum class Change {
+    enum class Change {
         NONE,
         UPDATE,
         DELETE

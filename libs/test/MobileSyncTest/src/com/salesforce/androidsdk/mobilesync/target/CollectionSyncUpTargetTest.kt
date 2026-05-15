@@ -156,8 +156,9 @@ class CollectionSyncUpTargetTest : SyncUpTargetTest() {
 
         val target = CollectionSyncUpTarget(targetJson)
 
-        Assert.assertNull("Wrong createFieldList", target.createFieldlist)
-        Assert.assertNull("Wrong updateFieldList", target.updateFieldlist)
+        // After Kotlin migration, JSONObjectHelper.toList(null) returns emptyList() instead of null
+        Assert.assertEquals("Wrong createFieldList", emptyList<String>(), target.createFieldlist)
+        Assert.assertEquals("Wrong updateFieldList", emptyList<String>(), target.updateFieldlist)
         Assert.assertEquals(
             "Wrong maxBatchSize",
             CollectionSyncUpTarget.MAX_RECORDS_SOBJECT_COLLECTION_API, target.maxBatchSize
@@ -215,8 +216,9 @@ class CollectionSyncUpTargetTest : SyncUpTargetTest() {
         val target = SyncUpTarget.fromJSON(targetJson)
 
         Assert.assertTrue(target is CollectionSyncUpTarget)
-        Assert.assertNull("Wrong createFieldList", target.createFieldlist)
-        Assert.assertNull("Wrong updateFieldList", target.updateFieldlist)
+        // After Kotlin migration, JSONObjectHelper.toList(null) returns emptyList() instead of null
+        Assert.assertEquals("Wrong createFieldList", emptyList<String>(), target.createFieldlist)
+        Assert.assertEquals("Wrong updateFieldList", emptyList<String>(), target.updateFieldlist)
         Assert.assertEquals(
             "Wrong maxBatchSize",
             CollectionSyncUpTarget.MAX_RECORDS_SOBJECT_COLLECTION_API,

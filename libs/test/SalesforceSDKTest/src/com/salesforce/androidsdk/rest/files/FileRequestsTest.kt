@@ -67,7 +67,7 @@ class FileRequestsTest {
             @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
             FileRequests.batchFileDetails(listOf("06930000001LkwtAAC", null as String))
             Assert.fail("should of thrown an exception")
-        } catch (e: IllegalArgumentException) { /* expected */
+        } catch (e: NullPointerException) { /* expected - null cannot be cast to non-null String */
         }
         try {
             FileRequests.batchFileDetails(listOf("06930000001LkwtAAC", ""))
@@ -161,7 +161,7 @@ class FileRequestsTest {
             @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
             FileRequests.fileDetails(null as String, "3")
             Assert.fail("null sfdcId didn't raise exception as expected")
-        } catch (e: IllegalArgumentException) { /* expected */
+        } catch (e: NullPointerException) { /* expected - null cannot be cast to non-null String */
         }
         try {
             FileRequests.fileDetails(sfdcId, "0")
@@ -231,7 +231,7 @@ class FileRequestsTest {
             @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
             FileRequests.fileShares(null as String, 3)
             Assert.fail("null sfdcId didn't raise exception as expected")
-        } catch (e: IllegalArgumentException) { /* expected */
+        } catch (e: NullPointerException) { /* expected - null cannot be cast to non-null String */
         }
         try {
             FileRequests.fileShares(sfdcId, -1)

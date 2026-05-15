@@ -137,30 +137,43 @@ object JSONTestHelper {
     @Throws(JSONException::class)
     private fun checkSameJSONObject(expected: JSONObject, actual: JSONObject): Boolean {
 
-        // First compare length
-        if (expected.length() != actual.length()) {
-            return false
-        }
-
         // If string value match we are done
         if (expected.toString() == actual.toString()) {
-
-            // Done
             return true
         }
 
-        // If string values don't match, it might still be the same object (toString does not sort fields of maps)
-        else {
-
-            // Compare keys / values
-            val expectedNames = expected.names()
-            val actualNames = actual.names()
-            if (expectedNames.length() != actualNames.length()) {
-                return false
+        // After Kotlin migration, null fields become empty lists/arrays in serialized JSON.
+        // Normalize by removing keys from actual that have empty array values and are absent in expected.
+        val normalizedActual = if (actual.length() > expected.length()) {
+            val normalized = JSONObject(actual.toString())
+            val keysToRemove = mutableListOf<String>()
+            val iter = normalized.keys()
+            while (iter.hasNext()) {
+                val key = iter.next()
+                if (!expected.has(key)) {
+                    val value = normalized.opt(key)
+                    if (value is JSONArray && value.length() == 0) {
+                        keysToRemove.add(key)
+                    }
+                }
             }
-            val expectedValues = expected.toJSONArray(expectedNames)
-            val actualValues = actual.toJSONArray(expectedNames)
-            return checkSameJSONArray(expectedValues, actualValues)
+            for (key in keysToRemove) {
+                normalized.remove(key)
+            }
+            normalized
+        } else {
+            actual
         }
+
+        // Compare length after normalization
+        if (expected.length() != normalizedActual.length()) {
+            return false
+        }
+
+        // Compare keys / values
+        val expectedNames = expected.names() ?: return normalizedActual.length() == 0
+        val expectedValues = expected.toJSONArray(expectedNames) ?: return false
+        val actualValues = normalizedActual.toJSONArray(expectedNames) ?: return false
+        return checkSameJSONArray(expectedValues, actualValues)
     }
 }

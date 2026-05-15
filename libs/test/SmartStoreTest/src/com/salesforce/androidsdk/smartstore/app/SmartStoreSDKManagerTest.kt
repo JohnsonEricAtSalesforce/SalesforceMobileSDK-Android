@@ -29,6 +29,7 @@ package com.salesforce.androidsdk.smartstore.app
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.salesforce.androidsdk.MainActivity
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.smartstore.store.DBOpenHelper
 import com.salesforce.androidsdk.smartstore.store.IndexSpec
@@ -56,8 +57,7 @@ class SmartStoreSDKManagerTest {
         context = InstrumentationRegistry.getInstrumentation()
             .targetContext
             .applicationContext
-        @Suppress("UNCHECKED_CAST")
-        SmartStoreSDKManager.initNative(context, null as Class<out android.app.Activity>)
+        SmartStoreSDKManager.initNative(context, MainActivity::class.java)
         manager = SmartStoreSDKManager.getInstance()
     }
 
@@ -69,7 +69,9 @@ class SmartStoreSDKManagerTest {
         // Nuking user smartstores of all users
         DBOpenHelper.deleteAllUserDatabases(context)
         // Nuking global smartstores
-        manager.removeAllGlobalStores()
+        if (::manager.isInitialized) {
+            manager.removeAllGlobalStores()
+        }
     }
 
     /**

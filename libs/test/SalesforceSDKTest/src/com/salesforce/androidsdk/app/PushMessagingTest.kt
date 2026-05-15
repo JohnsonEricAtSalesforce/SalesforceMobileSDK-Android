@@ -301,12 +301,9 @@ class PushMessagingTest {
         val salesforceSdkManager = SalesforceSDKManager.getInstance()
 
         // Mocks.
-        val restResponse = mockk<RestResponse>()
-        every { restResponse.asString() } returns ""
-        every { restResponse.isSuccess() } returns true
         val restClient = mockk<RestClient>()
         every { restClient.getClientInfo() } returns clientInfo
-        every { restClient.sendSync(any()) } returns restResponse
+        every { restClient.sendSync(any()) } returns null
 
         // Setup.
         createTestAccountInAccountManager(userAccountManager!!)

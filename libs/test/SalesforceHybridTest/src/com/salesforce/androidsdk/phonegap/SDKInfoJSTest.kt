@@ -46,7 +46,7 @@ class SDKInfoJSTest : JSTestCase() {
 
     @Test
     fun test() {
-        runTest(JS_SUITE, testName)
+        runTest(JS_SUITE, testName!!)
     }
 
     companion object {

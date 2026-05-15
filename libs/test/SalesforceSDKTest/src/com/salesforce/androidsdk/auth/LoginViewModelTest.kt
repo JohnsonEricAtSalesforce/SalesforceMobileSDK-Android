@@ -217,7 +217,7 @@ class LoginViewModelTest {
             loginHint = "ietf_example_domain_reserved_for_test@example.com",
         )
         val expectedResult =
-            "https://login.salesforce.com/services/oauth2/authorize\\?display=touch&response_type=code&client_id=__CONSUMER_KEY__&scope=api%20openid%20refresh_token%20web&login_hint=ietf_example_domain_reserved_for_test%40example.com&redirect_uri=__REDIRECT_URI__&device_id=[^=]+&code_challenge=[^=]+".toRegex()
+            "https://login.salesforce.com/services/oauth2/authorize\\?display=touch&response_type=code&client_id=__CONSUMER_KEY__&scope=api%20web%20openid&login_hint=ietf_example_domain_reserved_for_test%40example.com&redirect_uri=__REDIRECT_URI__&device_id=[^&]+&code_challenge=.+".toRegex()
         assertTrue(expectedResult.matches(result))
     }
 

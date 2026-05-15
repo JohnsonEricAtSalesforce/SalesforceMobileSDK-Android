@@ -631,9 +631,9 @@ class UserAccountTest {
         params["content_domain"] = TEST_CONTENT_DOMAIN
         params["content_sid"] = TEST_CONTENT_SID
         params["csrf_token"] = TEST_CSRF_TOKEN
-        params["cookie-clientSrc"] = TEST_COOKIE_CLIENT_SRC
-        params["cookie-sid_Client"] = TEST_COOKIE_SID_CLIENT
-        params["sidCookieName"] = TEST_SID_COOKIE_NAME
+        params["cookie_client_src"] = TEST_COOKIE_CLIENT_SRC
+        params["cookie_sid_client"] = TEST_COOKIE_SID_CLIENT
+        params["sid_cookie_name"] = TEST_SID_COOKIE_NAME
         params["parent_sid"] = TEST_PARENT_SID
         params["token_format"] = TEST_TOKEN_FORMAT
         params["scope"] = TEST_SCOPE
@@ -653,10 +653,23 @@ class UserAccountTest {
         response.put("last_modified_date", TEST_LAST_MODIFIED_DATE)
         response.put("user_id", TEST_USER_ID)
         response.put("organization_id", TEST_ORG_ID)
+        response.put("status", "active")
         val photos = JSONObject()
         photos.put("picture", TEST_PHOTO_URL)
         photos.put("thumbnail", TEST_THUMBNAIL_URL)
         response.put("photos", photos)
+        val urls = JSONObject()
+        urls.put("rest", "https://test.salesforce.com/services/data/v{version}/")
+        urls.put("sobjects", "https://test.salesforce.com/services/data/v{version}/sobjects/")
+        urls.put("search", "https://test.salesforce.com/services/data/v{version}/search/")
+        urls.put("query", "https://test.salesforce.com/services/data/v{version}/query/")
+        urls.put("recent", "https://test.salesforce.com/services/data/v{version}/recent/")
+        urls.put("profile", "https://test.salesforce.com/$TEST_USER_ID")
+        urls.put("feeds", "https://test.salesforce.com/services/data/v{version}/chatter/feeds/")
+        urls.put("groups", "https://test.salesforce.com/services/data/v{version}/chatter/groups/")
+        urls.put("users", "https://test.salesforce.com/services/data/v{version}/chatter/users/")
+        urls.put("feed_items", "https://test.salesforce.com/services/data/v{version}/chatter/feed-items/")
+        response.put("urls", urls)
         response.put("language", TEST_LANGUAGE)
         response.put("locale", TEST_LOCALE)
         return OAuth2.IdServiceResponse(response)

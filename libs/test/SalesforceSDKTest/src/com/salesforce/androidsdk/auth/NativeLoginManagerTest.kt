@@ -16,7 +16,6 @@ import com.salesforce.androidsdk.security.BiometricAuthenticationManager.Compani
 import com.salesforce.androidsdk.rest.ClientManager
 import com.salesforce.androidsdk.rest.ClientManager.RestClientCallback
 import com.salesforce.androidsdk.rest.RestClient
-import com.salesforce.androidsdk.rest.RestClient.OAuthRefreshInterceptor
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
@@ -223,9 +222,8 @@ class NativeLoginManagerTest {
         bioAuthManager.lock()
         Assert.assertTrue("Should be locked.", bioAuthManager.locked)
 
-        val mockInterceptor = mockk<OAuthRefreshInterceptor>(relaxed = true)
         val mockClient = mockk<RestClient>(relaxed = true)
-        every { mockClient.oAuthRefreshInterceptor } returns mockInterceptor
+        every { mockClient.getAuthToken() } returns "test_token"
 
         val mockClientManager = mockk<ClientManager>()
         every { mockClientManager.getRestClient(any(), any<RestClientCallback>()) } answers {
@@ -235,7 +233,7 @@ class NativeLoginManagerTest {
         val activity = mockk<FragmentActivity>(relaxed = true)
         mgr.onBiometricAuthenticationSucceeded(activity, mockClientManager)
 
-        verify { mockInterceptor.refreshAccessToken() }
+        verify { mockClient.getAuthToken() }
         Assert.assertFalse("Should be unlocked after success.", bioAuthManager.locked)
         verify { activity.finish() }
     }
@@ -249,10 +247,8 @@ class NativeLoginManagerTest {
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.lock()
 
-        val mockInterceptor = mockk<OAuthRefreshInterceptor>(relaxed = true)
-        every { mockInterceptor.refreshAccessToken() } throws RuntimeException("Token refresh failed")
         val mockClient = mockk<RestClient>(relaxed = true)
-        every { mockClient.oAuthRefreshInterceptor } returns mockInterceptor
+        every { mockClient.getAuthToken() } throws RuntimeException("Token refresh failed")
 
         val mockClientManager = mockk<ClientManager>()
         every { mockClientManager.getRestClient(any(), any<RestClientCallback>()) } answers {

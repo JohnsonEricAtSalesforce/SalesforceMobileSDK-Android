@@ -147,7 +147,7 @@ class PushServiceTest {
         every { restResponse.asString() } returns NOTIFICATIONS_TYPES_JSON
         every { restResponse.isSuccess() } returns true
         val restClient = mockk<RestClient>()
-        every { restClient.clientInfo } returns clientInfo
+        every { restClient.getClientInfo() } returns clientInfo
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup.
@@ -165,12 +165,9 @@ class PushServiceTest {
     fun testFetchNotificationsTypes_NullResponseBodyString() {
 
         // Mocks
-        val restResponse = mockk<RestResponse>()
-        every { restResponse.asString() } returns ""
-        every { restResponse.isSuccess() } returns true
         val restClient = mockk<RestClient>()
-        every { restClient.clientInfo } returns clientInfo
-        every { restClient.sendSync(any()) } returns restResponse
+        every { restClient.getClientInfo() } returns clientInfo
+        every { restClient.sendSync(any()) } returns null
 
         // Setup.
         VERSION_NUMBER_TEST = "v64.0"
@@ -206,7 +203,7 @@ class PushServiceTest {
         every { restResponse.isSuccess() } returns false
 
         val restClient = mockk<RestClient>()
-        every { restClient.clientInfo } returns clientInfo
+        every { restClient.getClientInfo() } returns clientInfo
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup.
@@ -232,7 +229,7 @@ class PushServiceTest {
         every { restResponse.isSuccess() } returns false
 
         val restClient = mockk<RestClient>()
-        every { restClient.clientInfo } returns clientInfo
+        every { restClient.getClientInfo() } returns clientInfo
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup.
@@ -265,7 +262,7 @@ class PushServiceTest {
         every { restResponse.isSuccess() } returns false
 
         val restClient = mockk<RestClient>()
-        every { restClient.clientInfo } returns clientInfo
+        every { restClient.getClientInfo() } returns clientInfo
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup.
@@ -287,7 +284,7 @@ class PushServiceTest {
         every { restResponse.asString() } returns NOTIFICATIONS_TYPES_JSON
         every { restResponse.isSuccess() } returns true
         val restClient = mockk<RestClient>()
-        every { restClient.clientInfo } returns clientInfo
+        every { restClient.getClientInfo() } returns clientInfo
         every { restClient.sendSync(any()) } returns restResponse
 
         var result = false
@@ -606,7 +603,7 @@ class PushServiceTest {
         )
         every { restResponse.isSuccess() } returns true
         val restClient = mockk<RestClient>()
-        every { restClient.clientInfo } returns clientInfo
+        every { restClient.getClientInfo() } returns clientInfo
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup.
@@ -749,7 +746,7 @@ class PushServiceTest {
         every { restResponse.getStatusCode() } returns HTTP_CREATED
         every { restResponse.asJSONObject() } returns JSONObject("{\"id\": \"test_id\"}")
         val restClient = mockk<RestClient>()
-        every { restClient.clientInfo } returns clientInfo
+        every { restClient.getClientInfo() } returns clientInfo
         every { restClient.sendSync(any()) } returns restResponse
 
         val account = UserAccountTest.createTestAccount()

@@ -26,6 +26,7 @@
  */
 package com.salesforce.androidsdk.security
 
+import android.accounts.AccountManager
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -35,7 +36,6 @@ import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.accounts.UserAccountTest
 import com.salesforce.androidsdk.app.SalesforceSDKManager
-import com.salesforce.androidsdk.auth.OAuth2
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager.Companion.BIO_AUTH_ENABLED
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager.Companion.BIO_AUTH_POLICY
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager.Companion.BIO_AUTH_TIMEOUT
@@ -228,8 +228,14 @@ class BiometricAuthenticationManagerTest {
     @Test
     fun testLockWithNoCurrentUser() {
         bioAuthManager.cleanUp(userAccount)
-        SalesforceSDKManager.getInstance().userAccountManager
-            .signoutCurrentUser(/* frontActivity = */ null, /* showLoginPage = */ true, OAuth2.LogoutReason.USER_LOGOUT)
+
+        // Remove all accounts synchronously so currentUser returns null.
+        val sdkManager = SalesforceSDKManager.getInstance()
+        val mgr = AccountManager.get(sdkManager.appContext)
+        val accounts = mgr.getAccountsByType(sdkManager.accountType)
+        for (account in accounts) {
+            mgr.removeAccountExplicitly(account)
+        }
 
         Assert.assertFalse("Should not be locked by default.", bioAuthManager.locked)
         bioAuthManager.lock()

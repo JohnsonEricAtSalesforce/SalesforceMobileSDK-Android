@@ -162,7 +162,7 @@ class SalesforceSDKManagerTest {
         for (acc in accMgr.getAccountsByType(UserAccountManagerTest.TEST_ACCOUNT_TYPE)) {
             accMgr.removeAccountExplicitly(acc)
         }
-        SalesforceSDKManager.ailtnAppName = null
+        SalesforceSDKTestManager.resetAiltnAppName()
         SalesforceSDKTestManager.resetInstance()
     }
 
@@ -229,6 +229,17 @@ class SalesforceSDKManagerTest {
              */
             fun resetInstance() {
                 TEST_INSTANCE = null
+            }
+
+            /**
+             * Resets the AILTN app name to null.
+             * This is needed because the public setter rejects null values.
+             */
+            fun resetAiltnAppName() {
+                SalesforceSDKManager::class.java
+                    .getDeclaredField("AILTN_APP_NAME")
+                    .apply { isAccessible = true }
+                    .set(null, null)
             }
         }
     }

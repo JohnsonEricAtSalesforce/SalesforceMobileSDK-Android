@@ -486,9 +486,9 @@ class DevSupportInfoTest {
         )
         val authConfig = listOf("Test" to "Config")
         val bootConfig = mockk<BootConfig>(relaxed = true) {
-            every { remoteAccessConsumerKey } returns "secondary_consumer_key"
-            every { oauthRedirectURI } returns "secondary://redirect"
-            every { oauthScopes } returns arrayOf("api", "web", "refresh_token")
+            every { getRemoteAccessConsumerKey() } returns "secondary_consumer_key"
+            every { getOauthRedirectURI() } returns "secondary://redirect"
+            every { getOauthScopes() } returns arrayOf("api", "web", "refresh_token")
         }
         val runtimeConfig = createMockRuntimeConfig(isManagedApp = true, oauthId = "secondary_oauth_id")
         val user = createMockUserAccount(username = "secondary@test.com")
@@ -584,9 +584,9 @@ class DevSupportInfoTest {
     fun createFromLegacyDevInfos_ProducesSameResultAsSecondaryConstructor() {
         // Create mock objects for secondary constructor
         val bootConfig = mockk<BootConfig>(relaxed = true) {
-            every { remoteAccessConsumerKey } returns "test_consumer_key"
-            every { oauthRedirectURI } returns "test://redirect"
-            every { oauthScopes } returns arrayOf("api", "web")
+            every { getRemoteAccessConsumerKey() } returns "test_consumer_key"
+            every { getOauthRedirectURI() } returns "test://redirect"
+            every { getOauthScopes() } returns arrayOf("api", "web")
         }
         val runtimeConfig = createMockRuntimeConfig(
             isManagedApp = true,

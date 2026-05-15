@@ -72,9 +72,9 @@ class OAuthConfigTest {
     @Test
     fun testBootConfigConstructorWithScopes() {
         val bootConfig = mockk<BootConfig>()
-        every { bootConfig.remoteAccessConsumerKey } returns "boot_consumer_key"
-        every { bootConfig.oauthRedirectURI } returns "boot://redirect"
-        every { bootConfig.oauthScopes } returns arrayOf("api", "web", "refresh_token")
+        every { bootConfig.getRemoteAccessConsumerKey() } returns "boot_consumer_key"
+        every { bootConfig.getOauthRedirectURI() } returns "boot://redirect"
+        every { bootConfig.getOauthScopes() } returns arrayOf("api", "web", "refresh_token")
 
         val config = OAuthConfig(bootConfig)
 
@@ -87,9 +87,9 @@ class OAuthConfigTest {
     @Test
     fun testBootConfigConstructorWithEmptyScopes() {
         val bootConfig = mockk<BootConfig>()
-        every { bootConfig.remoteAccessConsumerKey } returns "boot_consumer_key"
-        every { bootConfig.oauthRedirectURI } returns "boot://redirect"
-        every { bootConfig.oauthScopes } returns arrayOf()
+        every { bootConfig.getRemoteAccessConsumerKey() } returns "boot_consumer_key"
+        every { bootConfig.getOauthRedirectURI() } returns "boot://redirect"
+        every { bootConfig.getOauthScopes() } returns arrayOf()
 
         val config = OAuthConfig(bootConfig)
 
