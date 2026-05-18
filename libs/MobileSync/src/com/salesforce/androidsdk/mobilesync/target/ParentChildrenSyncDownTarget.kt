@@ -71,10 +71,10 @@ open class ParentChildrenSyncDownTarget(
      */
     constructor(target: JSONObject) : this(
         ParentInfo(target.getJSONObject(ParentChildrenSyncTargetHelper.PARENT)),
-        JSONObjectHelper.toList<String>(target.optJSONArray(PARENT_FIELDLIST)),
+        JSONObjectHelper.toList<String>(target.optJSONArray(PARENT_FIELDLIST))!!,
         target.getString(PARENT_SOQL_FILTER),
         ChildrenInfo(target.getJSONObject(ParentChildrenSyncTargetHelper.CHILDREN)),
-        JSONObjectHelper.toList<String>(target.optJSONArray(CHILDREN_FIELDLIST)),
+        JSONObjectHelper.toList<String>(target.optJSONArray(CHILDREN_FIELDLIST))!!,
         RelationshipType.valueOf(target.getString(ParentChildrenSyncTargetHelper.RELATIONSHIP_TYPE))
     )
 
@@ -199,7 +199,7 @@ open class ParentChildrenSyncDownTarget(
     protected fun parseChildrenIdsFromResponse(records: JSONArray): Set<String> {
         return with(HashSet<String>()) {
             JSONObjectHelper
-                .toList<JSONObject>(records)
+                .toList<JSONObject>(records)!!
                 .forEach { record ->
                     val childrenRecords =
                         record.optJSONArray(childrenInfo.sobjectTypePlural) ?: JSONArray()

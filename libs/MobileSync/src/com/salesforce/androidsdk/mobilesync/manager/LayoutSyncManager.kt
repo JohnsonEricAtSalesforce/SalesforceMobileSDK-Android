@@ -330,7 +330,7 @@ class LayoutSyncManager private constructor(
             if (account != null) {
                 val keysToRemove: MutableSet<String> = HashSet()
                 for (key in INSTANCES.keys) {
-                    if (key.startsWith(account.userId)) {
+                    if (key.startsWith(account.userId!!)) {
                         keysToRemove.add(key)
                     }
                 }

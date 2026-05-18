@@ -75,7 +75,7 @@ open class RefreshSyncDownTarget internal constructor(
      * @throws JSONException
      */
     constructor(target: JSONObject) : this(
-        JSONObjectHelper.toList<String>(target.getJSONArray(FIELDLIST)),
+        JSONObjectHelper.toList<String>(target.getJSONArray(FIELDLIST))!!,
         target.getString(SOBJECT_TYPE),
         target.getString(SOUP_NAME),
         target.optInt(COUNT_IDS_PER_SOQL, MAX_COUNT_IDS_PER_SOQL)

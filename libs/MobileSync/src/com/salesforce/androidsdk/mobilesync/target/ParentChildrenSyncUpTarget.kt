@@ -65,8 +65,8 @@ open class ParentChildrenSyncUpTarget(
         JSONObjectHelper.toList<String>(target.optJSONArray(CREATE_FIELDLIST)),
         JSONObjectHelper.toList<String>(target.optJSONArray(UPDATE_FIELDLIST)),
         ChildrenInfo(target.getJSONObject(ParentChildrenSyncTargetHelper.CHILDREN)),
-        JSONObjectHelper.toList<String>(target.optJSONArray(CHILDREN_CREATE_FIELDLIST)),
-        JSONObjectHelper.toList<String>(target.optJSONArray(CHILDREN_UPDATE_FIELDLIST)),
+        JSONObjectHelper.toList<String>(target.optJSONArray(CHILDREN_CREATE_FIELDLIST))!!,
+        JSONObjectHelper.toList<String>(target.optJSONArray(CHILDREN_UPDATE_FIELDLIST))!!,
         RelationshipType.valueOf(target.getString(ParentChildrenSyncTargetHelper.RELATIONSHIP_TYPE))
     )
 

@@ -285,9 +285,9 @@ open class BriefcaseSyncDownTarget internal constructor(
         syncManager.checkAcceptingSyncs()
         val request = RestRequest.getRequestForCollectionRetrieve(
             syncManager.apiVersion,
-            sobjectType,
-            ids,
-            fieldlist
+            sobjectType!!,
+            ids!!,
+            fieldlist!!
         )
         val response = syncManager.sendSyncWithMobileSyncUserAgent(request)
         return response.asJSONArray()

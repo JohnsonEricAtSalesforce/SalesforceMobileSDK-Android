@@ -60,7 +60,7 @@ open class MruSyncDownTarget : SyncDownTarget {
      * @throws JSONException
      */
     constructor(target: JSONObject) : super(target) {
-        fieldlist = JSONObjectHelper.toList(target.getJSONArray(FIELDLIST))
+        fieldlist = JSONObjectHelper.toList<String>(target.getJSONArray(FIELDLIST))!!
         objectType = target.getString(SOBJECT_TYPE)
     }
 

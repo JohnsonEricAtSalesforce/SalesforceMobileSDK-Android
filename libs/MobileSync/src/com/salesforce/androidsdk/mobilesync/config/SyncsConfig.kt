@@ -113,7 +113,7 @@ class SyncsConfig private constructor(str: String?) {
     fun createSyncs(store: SmartStore) {
         val syncConfigs = syncConfigs ?: return
         val syncManager = SyncManager.getInstance(null, null, store)
-        JSONObjectHelper.toList<JSONObject>(syncConfigs).forEach { syncConfig ->
+        JSONObjectHelper.toList<JSONObject>(syncConfigs)!!.forEach { syncConfig ->
             try {
                 val syncName = syncConfig.getString(SYNC_NAME)
                 // Leaving sync alone if it already exists

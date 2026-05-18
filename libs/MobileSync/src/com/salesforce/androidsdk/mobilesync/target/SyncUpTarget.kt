@@ -172,9 +172,10 @@ open class SyncUpTarget : SyncTarget {
             createFieldlist ?: fieldlist ?: throw MobileSyncException("No fields specified")
         val objectType = SmartStore.project(record, Constants.SOBJECT_TYPE) as? String ?: "null"
         val fields = buildFieldsMap(record, fieldlistToUse, idFieldName, modificationDateFieldName)
-        val externalId = if (externalIdFieldName != null) JSONObjectHelper.optString(
+        val extIdFieldName = externalIdFieldName
+        val externalId = if (extIdFieldName != null) JSONObjectHelper.optString(
             record,
-            externalIdFieldName
+            extIdFieldName
         ) else null
         return if (externalId != null // the following check is there for the case
             // where the the external id field is the id field
@@ -228,7 +229,7 @@ open class SyncUpTarget : SyncTarget {
         val request = RestRequest.getRequestForUpsert(
             syncManager.apiVersion,
             objectType,
-            externalIdFieldName,
+            externalIdFieldName!!,
             externalId,
             fields
         )

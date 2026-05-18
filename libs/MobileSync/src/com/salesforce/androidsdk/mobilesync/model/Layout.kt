@@ -118,7 +118,7 @@ data class Layout(
                 fun fromJSON(obj: JSONObject): Row {
                     return Row(
                         JSONObjectHelper
-                            .toList<JSONObject>(obj.optJSONArray(LAYOUT_ITEMS) ?: JSONArray())
+                            .toList<JSONObject>(obj.optJSONArray(LAYOUT_ITEMS) ?: JSONArray())!!
                             .map { Item.fromJSON(it) }
                     )
                 }
@@ -146,7 +146,7 @@ data class Layout(
                     heading = obj.optString(HEADING),
                     id = obj.optString(ID),
                     layoutRows = JSONObjectHelper
-                        .toList<JSONObject>(obj.optJSONArray(LAYOUT_ROWS) ?: JSONArray())
+                        .toList<JSONObject>(obj.optJSONArray(LAYOUT_ROWS) ?: JSONArray())!!
                         .map { Row.fromJSON(it) },
                     rows = obj.optInt(ROWS),
                     usesHeading = obj.optBoolean(USE_HEADING)
@@ -173,7 +173,7 @@ data class Layout(
                 layoutType = obj.optString(LAYOUT_TYPE),
                 mode = obj.optString(MODE),
                 sections = JSONObjectHelper
-                    .toList<JSONObject>(obj.optJSONArray(SECTIONS) ?: JSONArray())
+                    .toList<JSONObject>(obj.optJSONArray(SECTIONS) ?: JSONArray())!!
                     .map { LayoutSection.fromJSON(it) },
                 rawData = obj
             )

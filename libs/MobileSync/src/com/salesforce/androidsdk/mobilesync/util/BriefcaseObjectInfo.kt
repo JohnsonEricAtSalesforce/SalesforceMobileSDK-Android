@@ -47,7 +47,7 @@ class BriefcaseObjectInfo @JvmOverloads constructor(
     constructor(json: JSONObject) : this(
         json.getString(SOUP_NAME),
         json.optString(SOBJECT_TYPE),
-        JSONObjectHelper.toList<String>(json.getJSONArray(FIELD_LIST)),
+        JSONObjectHelper.toList<String>(json.getJSONArray(FIELD_LIST))!!,
         JSONObjectHelper.optString(json, ID_FIELD_NAME),
         JSONObjectHelper.optString(json, MODIFICATION_DATE_FIELD_NAME)
     )
@@ -80,7 +80,7 @@ class BriefcaseObjectInfo @JvmOverloads constructor(
         @Throws(JSONException::class)
         fun fromJSONArray(json: JSONArray): List<BriefcaseObjectInfo> {
             return JSONObjectHelper
-                .toList<JSONObject>(json)
+                .toList<JSONObject>(json)!!
                 .map { BriefcaseObjectInfo(it) }
         }
     }

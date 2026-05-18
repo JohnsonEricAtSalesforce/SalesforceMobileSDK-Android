@@ -171,10 +171,8 @@ open class SoqlSyncDownTarget : SyncDownTarget {
 
     @Throws(IOException::class, JSONException::class)
     override fun continueFetch(syncManager: SyncManager): JSONArray? {
-        if (nextRecordsUrl == null) {
-            return null
-        }
-        val request = RestRequest(RestRequest.RestMethod.GET, nextRecordsUrl)
+        val nextUrl = nextRecordsUrl ?: return null
+        val request = RestRequest(RestRequest.RestMethod.GET, nextUrl)
         val response = syncManager.sendSyncWithMobileSyncUserAgent(request)
         val responseJson = getResponseJson(response)
         val records = getRecordsFromResponseJson(responseJson)

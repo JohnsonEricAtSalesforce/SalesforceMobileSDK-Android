@@ -216,9 +216,10 @@ open class BatchSyncUpTarget : SyncUpTarget, AdvancedSyncUpTarget {
                     createFieldlist ?: fieldlist ?: throw MobileSyncException("No fields specified")
                 fields =
                     buildFieldsMap(record, fieldlistToUse, idFieldName, modificationDateFieldName)
-                val externalId = if (externalIdFieldName != null) JSONObjectHelper.optString(
+                val extIdFieldName = externalIdFieldName
+                val externalId = if (extIdFieldName != null) JSONObjectHelper.optString(
                     record,
-                    externalIdFieldName
+                    extIdFieldName
                 ) else null
 
                 // Do upsert if externalId specified
@@ -229,7 +230,7 @@ open class BatchSyncUpTarget : SyncUpTarget, AdvancedSyncUpTarget {
                 ) {
                     RecordRequest.requestForUpsert(
                         objectType,
-                        externalIdFieldName,
+                        extIdFieldName!!,
                         externalId,
                         fields
                     )

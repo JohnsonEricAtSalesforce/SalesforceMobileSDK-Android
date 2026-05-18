@@ -263,7 +263,7 @@ abstract class SyncDownTarget : SyncTarget {
         var maxTimeStamp: Long = -1
         for (i in 0 until records.length()) {
             val timeStampStr =
-                JSONObjectHelper.optString(records.getJSONObject(i), modifiedDateFieldName)
+                JSONObjectHelper.optString(records.getJSONObject(i), modifiedDateFieldName!!)
             if (timeStampStr == null) {
                 maxTimeStamp = -1
                 break // field not present
@@ -311,7 +311,7 @@ abstract class SyncDownTarget : SyncTarget {
     protected fun parseIdsFromResponse(records: JSONArray): Set<String> {
         return with(HashSet<String>()) {
             JSONObjectHelper
-                .toList<JSONObject>(records)
+                .toList<JSONObject>(records)!!
                 .forEach { idJson ->
                     this.add(idJson.optString(idFieldName))
                 }
