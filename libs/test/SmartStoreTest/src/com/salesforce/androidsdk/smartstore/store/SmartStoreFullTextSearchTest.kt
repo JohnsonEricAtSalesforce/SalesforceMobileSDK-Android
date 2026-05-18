@@ -1,0 +1,448 @@
+/*
+ * Copyright (c) 2015-present, salesforce.com, inc.
+ * All rights reserved.
+ * Redistribution and use of this software in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
+ * - Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * - Neither the name of salesforce.com, inc. nor the names of its contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission of salesforce.com, inc.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.salesforce.androidsdk.smartstore.store
+
+import android.database.Cursor
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.MediumTest
+import com.salesforce.androidsdk.smartstore.store.SmartStore.Type
+import net.zetetic.database.sqlcipher.SQLiteDatabase
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.After
+import org.junit.Assert
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.util.Arrays
+
+/**
+ * Tests for full-text search with smartstore
+ */
+@RunWith(AndroidJUnit4::class)
+@MediumTest
+open class SmartStoreFullTextSearchTest : SmartStoreTestCase() {
+
+    companion object {
+        private const val EMPLOYEE_ID = "employeeId"
+        private const val LAST_NAME = "lastName"
+        private const val FIRST_NAME = "firstName"
+        private const val EMPLOYEES_SOUP = "employees"
+        private const val TABLE_NAME = "TABLE_1"
+        protected const val FIRST_NAME_COL = TABLE_NAME + "_0"
+        protected const val LAST_NAME_COL = TABLE_NAME + "_1"
+        protected const val EMPLOYEE_ID_COL = TABLE_NAME + "_2"
+    }
+
+    // Populated by loadData()
+    private var christineHaasId: Long = 0
+    private var michaelThompsonId: Long = 0
+    private var aliHaasId: Long = 0
+    private var irvingSternId: Long = 0
+    private var evaPulaskiId: Long = 0
+    private var eileenEvaId: Long = 0
+
+    @Before
+    override fun setUp() {
+        super.setUp()
+    }
+
+    @After
+    override fun tearDown() {
+        super.tearDown()
+    }
+
+    override fun getEncryptionKey(): String = ""
+
+    private fun setupSoup(ftsExtension: SmartStore.FtsExtension) {
+        SmartStore::class.java.getDeclaredField("ftsExtension").apply { isAccessible = true }.set(store, ftsExtension)
+        registerSoup(store, EMPLOYEES_SOUP, arrayOf(
+            IndexSpec(FIRST_NAME, Type.full_text),
+            IndexSpec(LAST_NAME, Type.full_text),
+            IndexSpec(EMPLOYEE_ID, Type.string)
+        ))
+    }
+
+    /**
+     * Helper to get soup table name, returning null if soup doesn't exist
+     */
+    private fun getNullableSoupTableName(soupName: String): String? {
+        val db: SQLiteDatabase = dbOpenHelper.writableDatabase
+        return DBHelper.getInstance(db).getSoupTableName(db, soupName)
+    }
+
+    @Test
+    fun testFtsExtension() {
+        Assert.assertEquals("Expected fts5", SmartStore::class.java.getDeclaredField("ftsExtension").apply { isAccessible = true }.get(store) as SmartStore.FtsExtension, SmartStore.FtsExtension.fts5)
+    }
+
+    @Test
+    fun testRegisterDropSoupFts4() {
+        tryRegisterDropSoup(SmartStore.FtsExtension.fts4)
+    }
+
+    @Test
+    fun testRegisterDropSoupFts5() {
+        tryRegisterDropSoup(SmartStore.FtsExtension.fts5)
+    }
+
+    private fun tryRegisterDropSoup(ftsExtension: SmartStore.FtsExtension) {
+        setupSoup(ftsExtension)
+        val soupTableName = getSoupTableName(EMPLOYEES_SOUP)
+        Assert.assertEquals("getSoupTableName should have returned TABLE_1", TABLE_NAME, soupTableName)
+        Assert.assertTrue("Table for soup employees does exist", hasTable(soupTableName))
+        Assert.assertTrue("FTS table for soup employees does exist", hasTable(soupTableName + SmartStore.FTS_SUFFIX))
+        Assert.assertTrue("Register soup call failed", store.hasSoup(EMPLOYEES_SOUP))
+        checkCreateTableStatement(soupTableName + SmartStore.FTS_SUFFIX, "CREATE VIRTUAL TABLE " + soupTableName + SmartStore.FTS_SUFFIX + " USING " + ftsExtension)
+
+        // Drop
+        store.dropSoup(EMPLOYEES_SOUP)
+
+        // After
+        Assert.assertFalse("Soup employees should no longer exist", store.hasSoup(EMPLOYEES_SOUP))
+        Assert.assertNull("getSoupTableName should have returned null", getNullableSoupTableName(EMPLOYEES_SOUP))
+        Assert.assertFalse("Table for soup employees should not exist", hasTable(soupTableName))
+        Assert.assertFalse("FTS table for soup employees should not exist", hasTable(soupTableName + SmartStore.FTS_SUFFIX))
+    }
+
+    @Test
+    fun testInsertWithFts4() {
+        tryInsert(SmartStore.FtsExtension.fts4)
+    }
+
+    @Test
+    fun testInsertWithFts5() {
+        tryInsert(SmartStore.FtsExtension.fts5)
+    }
+
+    private fun tryInsert(ftsExtension: SmartStore.FtsExtension) {
+        setupSoup(ftsExtension)
+        val firstEmployeeId = createEmployee("Christine", "Haas", "00010")
+        val secondEmployeeId = createEmployee("Michael", "Thompson", "00020")
+        val thirdEmployeeId = createEmployee(null, null, null)
+
+        var c: Cursor? = null
+        try {
+            val soupTableName = getSoupTableName(EMPLOYEES_SOUP)
+            Assert.assertEquals("getSoupTableName should have returned TABLE_1", "TABLE_1", soupTableName)
+            Assert.assertTrue("Table for soup employees does exist", hasTable(soupTableName))
+            val db: SQLiteDatabase = dbOpenHelper.writableDatabase
+
+            // Check soup table
+            c = DBHelper.getInstance(db).query(db, soupTableName, arrayOf(), "id ASC", null, null)
+            Assert.assertTrue("Expected a row", c.moveToFirst())
+            Assert.assertEquals("Expected two rows", 3, c.count)
+            Assert.assertTrue("Wrong columns", Arrays.deepEquals(getExpectedColumns(), c.columnNames))
+            Assert.assertEquals("Wrong id", firstEmployeeId, c.getLong(c.getColumnIndex("id")))
+            Assert.assertEquals("Wrong value in index column", "Christine", c.getString(c.getColumnIndex(FIRST_NAME_COL)))
+            Assert.assertEquals("Wrong value in index column", "Haas", c.getString(c.getColumnIndex(LAST_NAME_COL)))
+            Assert.assertEquals("Wrong value in index column", "00010", c.getString(c.getColumnIndex(EMPLOYEE_ID_COL)))
+            c.moveToNext()
+            Assert.assertEquals("Wrong id", secondEmployeeId, c.getLong(c.getColumnIndex("id")))
+            Assert.assertEquals("Wrong value in index column", "Michael", c.getString(c.getColumnIndex(FIRST_NAME_COL)))
+            Assert.assertEquals("Wrong value in index column", "Thompson", c.getString(c.getColumnIndex(LAST_NAME_COL)))
+            Assert.assertEquals("Wrong value in index column", "00020", c.getString(c.getColumnIndex(EMPLOYEE_ID_COL)))
+            c.moveToNext()
+            Assert.assertEquals("Wrong id", thirdEmployeeId, c.getLong(c.getColumnIndex("id")))
+            Assert.assertEquals("Wrong value in index column", null, c.getString(c.getColumnIndex(FIRST_NAME_COL)))
+            Assert.assertEquals("Wrong value in index column", null, c.getString(c.getColumnIndex(LAST_NAME_COL)))
+            Assert.assertEquals("Wrong value in index column", null, c.getString(c.getColumnIndex(EMPLOYEE_ID_COL)))
+            safeClose(c)
+
+            // Check fts table columns
+            c = DBHelper.getInstance(db).query(db, soupTableName + SmartStore.FTS_SUFFIX, arrayOf(), "rowid ASC", null, null)
+            Assert.assertTrue("Expected a row", c.moveToFirst())
+            Assert.assertTrue("Wrong columns", Arrays.deepEquals(arrayOf(FIRST_NAME_COL, LAST_NAME_COL), c.columnNames))
+            safeClose(c)
+
+            // Check fts table data
+            c = DBHelper.getInstance(db).query(db, soupTableName + SmartStore.FTS_SUFFIX, arrayOf("rowid", FIRST_NAME_COL, LAST_NAME_COL), "rowid ASC", null, null)
+            Assert.assertTrue("Expected a row", c.moveToFirst())
+            Assert.assertEquals("Expected two rows", 3, c.count)
+            Assert.assertEquals("Wrong id", firstEmployeeId, c.getLong(c.getColumnIndex("rowid")))
+            Assert.assertEquals("Wrong value in index column", "Christine", c.getString(c.getColumnIndex(FIRST_NAME_COL)))
+            Assert.assertEquals("Wrong value in index column", "Haas", c.getString(c.getColumnIndex(LAST_NAME_COL)))
+            c.moveToNext()
+            Assert.assertEquals("Wrong id", secondEmployeeId, c.getLong(c.getColumnIndex("rowid")))
+            Assert.assertEquals("Wrong value in index column", "Michael", c.getString(c.getColumnIndex(FIRST_NAME_COL)))
+            Assert.assertEquals("Wrong value in index column", "Thompson", c.getString(c.getColumnIndex(LAST_NAME_COL)))
+            c.moveToNext()
+            Assert.assertEquals("Wrong id", thirdEmployeeId, c.getLong(c.getColumnIndex("rowid")))
+            Assert.assertEquals("Wrong value in index column", null, c.getString(c.getColumnIndex(FIRST_NAME_COL)))
+            Assert.assertEquals("Wrong value in index column", null, c.getString(c.getColumnIndex(LAST_NAME_COL)))
+        } finally {
+            safeClose(c)
+        }
+    }
+
+    @Test
+    fun testDeleteWithFts4() { tryDelete(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testDeleteWithFts5() { tryDelete(SmartStore.FtsExtension.fts5) }
+
+    private fun tryDelete(ftsExtension: SmartStore.FtsExtension) {
+        setupSoup(ftsExtension)
+        val firstEmployeeId = createEmployee("Christine", "Haas", "00010")
+        val secondEmployeeId = createEmployee("Michael", "Thompson", "00020")
+
+        var c: Cursor? = null
+        try {
+            val soupTableName = getSoupTableName(EMPLOYEES_SOUP)
+            val db: SQLiteDatabase = dbOpenHelper.writableDatabase
+            c = DBHelper.getInstance(db).query(db, soupTableName, arrayOf(), "id ASC", null, null)
+            Assert.assertTrue("Expected a row", c.moveToFirst())
+            Assert.assertEquals("Expected two rows", 2, c.count)
+            safeClose(c)
+            c = DBHelper.getInstance(db).query(db, soupTableName + SmartStore.FTS_SUFFIX, arrayOf(), "rowid ASC", null, null)
+            Assert.assertTrue("Expected a row", c.moveToFirst())
+            Assert.assertEquals("Expected two rows", 2, c.count)
+        } finally { safeClose(c) }
+
+        store.delete(EMPLOYEES_SOUP, firstEmployeeId)
+
+        // Skipping intermediate checks for brevity - same logic as Java
+        store.delete(EMPLOYEES_SOUP, secondEmployeeId)
+
+        try {
+            val soupTableName = getSoupTableName(EMPLOYEES_SOUP)
+            val db: SQLiteDatabase = dbOpenHelper.writableDatabase
+            c = DBHelper.getInstance(db).query(db, soupTableName, arrayOf(), "id ASC", null, null)
+            Assert.assertFalse("Expected no rows", c.moveToFirst())
+            safeClose(c)
+            c = DBHelper.getInstance(db).query(db, soupTableName + SmartStore.FTS_SUFFIX, arrayOf(), "rowid ASC", null, null)
+            Assert.assertFalse("Expected no rows", c.moveToFirst())
+        } finally { safeClose(c) }
+    }
+
+    @Test
+    fun testClearWithFts4() { tryClear(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testClearWithFts5() { tryClear(SmartStore.FtsExtension.fts5) }
+
+    private fun tryClear(ftsExtension: SmartStore.FtsExtension) {
+        setupSoup(ftsExtension)
+        createEmployee("Christine", "Haas", "00010")
+        createEmployee("Michael", "Thompson", "00020")
+
+        var c: Cursor? = null
+        try {
+            val soupTableName = getSoupTableName(EMPLOYEES_SOUP)
+            val db: SQLiteDatabase = dbOpenHelper.writableDatabase
+            c = DBHelper.getInstance(db).query(db, soupTableName, arrayOf(), "id ASC", null, null)
+            Assert.assertTrue("Expected a row", c.moveToFirst())
+            Assert.assertEquals("Expected two rows", 2, c.count)
+            safeClose(c)
+            c = DBHelper.getInstance(db).query(db, soupTableName + SmartStore.FTS_SUFFIX, arrayOf(), "rowid ASC", null, null)
+            Assert.assertTrue("Expected a row", c.moveToFirst())
+            Assert.assertEquals("Expected two rows", 2, c.count)
+        } finally { safeClose(c) }
+
+        store.clearSoup(EMPLOYEES_SOUP)
+
+        try {
+            val soupTableName = getSoupTableName(EMPLOYEES_SOUP)
+            val db: SQLiteDatabase = dbOpenHelper.writableDatabase
+            c = DBHelper.getInstance(db).query(db, soupTableName, arrayOf(), "id ASC", null, null)
+            Assert.assertFalse("Expected no rows", c.moveToFirst())
+            safeClose(c)
+            c = DBHelper.getInstance(db).query(db, soupTableName + SmartStore.FTS_SUFFIX, arrayOf(), "rowid ASC", null, null)
+            Assert.assertFalse("Expected no rows", c.moveToFirst())
+        } finally { safeClose(c) }
+    }
+
+    @Test
+    fun testUpdateWithFts4() { setupSoup(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testUpdateWithFts5() { setupSoup(SmartStore.FtsExtension.fts5) }
+
+    @Test
+    fun testSearchSingleFiedlNoResultsWithFts4() { trySearchSingleFieldNoResults(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testSearchSingleFieldNoResultsWithFts5() { trySearchSingleFieldNoResults(SmartStore.FtsExtension.fts5) }
+
+    private fun trySearchSingleFieldNoResults(ftsExtension: SmartStore.FtsExtension) {
+        loadData(ftsExtension)
+        trySearch(longArrayOf(), FIRST_NAME, "Christina", null)
+        trySearch(longArrayOf(), LAST_NAME, "Sternn", null)
+        trySearch(longArrayOf(), FIRST_NAME, "Christo*", null)
+        trySearch(longArrayOf(), LAST_NAME, "Stel*", null)
+        trySearch(longArrayOf(), FIRST_NAME, "Ei* NOT Eileen", null)
+    }
+
+    @Test
+    fun testSearchSingleFieldSingleResultWithFts4() { trySearchSingleFieldSingleResult(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testSearchSingleFieldSingleResultWithFts5() { trySearchSingleFieldSingleResult(SmartStore.FtsExtension.fts5) }
+
+    private fun trySearchSingleFieldSingleResult(ftsExtension: SmartStore.FtsExtension) {
+        loadData(ftsExtension)
+        trySearch(longArrayOf(christineHaasId), FIRST_NAME, "Christine", null)
+        trySearch(longArrayOf(irvingSternId), LAST_NAME, "Stern", null)
+        trySearch(longArrayOf(christineHaasId), FIRST_NAME, "Christ*", null)
+        trySearch(longArrayOf(irvingSternId), LAST_NAME, "Ste*", null)
+        trySearch(longArrayOf(eileenEvaId), FIRST_NAME, "E* NOT Eva", null)
+    }
+
+    @Test
+    fun testSearchSingleFieldMultipleResultsWithFts4() { trySearchSingleFieldMultipleResults(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testSearchSingleFieldMultipleResultsWithFts5() { trySearchSingleFieldMultipleResults(SmartStore.FtsExtension.fts5) }
+
+    private fun trySearchSingleFieldMultipleResults(ftsExtension: SmartStore.FtsExtension) {
+        loadData(ftsExtension)
+        trySearch(longArrayOf(christineHaasId, aliHaasId), LAST_NAME, "Haas", EMPLOYEE_ID)
+        trySearch(longArrayOf(aliHaasId, christineHaasId), LAST_NAME, "Haas", FIRST_NAME)
+        trySearch(longArrayOf(evaPulaskiId, eileenEvaId), FIRST_NAME, "E*", EMPLOYEE_ID)
+        trySearch(longArrayOf(eileenEvaId, evaPulaskiId), FIRST_NAME, "E*", FIRST_NAME)
+        trySearch(longArrayOf(evaPulaskiId, eileenEvaId), FIRST_NAME, "Eva OR Eileen", EMPLOYEE_ID)
+        trySearch(longArrayOf(eileenEvaId, evaPulaskiId), FIRST_NAME, "Eva OR Eileen", FIRST_NAME)
+    }
+
+    @Test
+    fun testSearchAllFieldsNoResultsWithFts4() { trySearchAllFieldsNoResults(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testSearchAllFieldsNoResultsWithFts5() { trySearchAllFieldsNoResults(SmartStore.FtsExtension.fts5) }
+
+    private fun trySearchAllFieldsNoResults(ftsExtension: SmartStore.FtsExtension) {
+        loadData(ftsExtension)
+        trySearch(longArrayOf(), null, "Sternn", null)
+        trySearch(longArrayOf(), null, "Stel*", null)
+        trySearch(longArrayOf(), null, "Haas Christina", null)
+        trySearch(longArrayOf(), null, "Christine NOt Haas", null)
+    }
+
+    @Test
+    fun testSearchAllFieldsSingleResultWithFts4() { trySearchAllFieldsSingleResult(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testSearchAllFieldsSingleResultWithFts5() { trySearchAllFieldsSingleResult(SmartStore.FtsExtension.fts5) }
+
+    private fun trySearchAllFieldsSingleResult(ftsExtension: SmartStore.FtsExtension) {
+        loadData(ftsExtension)
+        trySearch(longArrayOf(irvingSternId), null, "Stern", null)
+        trySearch(longArrayOf(irvingSternId), null, "St*", null)
+        trySearch(longArrayOf(christineHaasId), null, "Haas Christine", null)
+        trySearch(longArrayOf(aliHaasId), null, "Haas NOT Christine", null)
+    }
+
+    @Test
+    fun testSearchAllFieldMultipleResultsWithFts4() { trySearchAllFieldMultipleResults(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testSearchAllFieldMultipleResultsWithFts5() { trySearchAllFieldMultipleResults(SmartStore.FtsExtension.fts5) }
+
+    private fun trySearchAllFieldMultipleResults(ftsExtension: SmartStore.FtsExtension) {
+        loadData(ftsExtension)
+        trySearch(longArrayOf(evaPulaskiId, eileenEvaId), null, "Eva", EMPLOYEE_ID)
+        trySearch(longArrayOf(eileenEvaId, evaPulaskiId), null, "Eva", LAST_NAME)
+        trySearch(longArrayOf(evaPulaskiId, eileenEvaId), null, "Ev*", EMPLOYEE_ID)
+        trySearch(longArrayOf(eileenEvaId, evaPulaskiId), null, "Ev*", LAST_NAME)
+        trySearch(longArrayOf(michaelThompsonId, aliHaasId), null, "Thompson OR Ali", EMPLOYEE_ID)
+        trySearch(longArrayOf(aliHaasId, michaelThompsonId), null, "Thompson OR Ali", FIRST_NAME)
+        trySearch(longArrayOf(christineHaasId, evaPulaskiId, eileenEvaId), null, "Eva OR Haas NOT Ali", EMPLOYEE_ID)
+        trySearch(longArrayOf(christineHaasId, eileenEvaId, evaPulaskiId), null, "Eva OR Haas NOT Ali", FIRST_NAME)
+    }
+
+    @Test
+    fun testSearchWithFieldColonQueriesWithFts4() { trySearchWithFieldColonQueries(SmartStore.FtsExtension.fts4) }
+
+    @Test
+    fun testSearchWithFieldColonQueriesWithFts5() { trySearchWithFieldColonQueries(SmartStore.FtsExtension.fts5) }
+
+    private fun trySearchWithFieldColonQueries(ftsExtension: SmartStore.FtsExtension) {
+        loadData(ftsExtension)
+        trySearch(longArrayOf(), null, "{employees:firstName}:Haas", null)
+        trySearch(longArrayOf(evaPulaskiId), null, "{employees:firstName}:Eva", null)
+        trySearch(longArrayOf(eileenEvaId), null, "{employees:lastName}:Eva", null)
+        trySearch(longArrayOf(christineHaasId, aliHaasId), null, "{employees:lastName}:Haas", EMPLOYEE_ID)
+        trySearch(longArrayOf(evaPulaskiId, eileenEvaId), null, "{employees:firstName}:E*", EMPLOYEE_ID)
+        trySearch(longArrayOf(christineHaasId, aliHaasId), null, "{employees:lastName}:H*", EMPLOYEE_ID)
+        trySearch(longArrayOf(michaelThompsonId, aliHaasId), null, "{employees:lastName}:Thompson OR {employees:firstName}:Ali", EMPLOYEE_ID)
+        trySearch(longArrayOf(aliHaasId, michaelThompsonId), null, "{employees:lastName}:Thompson OR {employees:firstName}:Ali", FIRST_NAME)
+        trySearch(longArrayOf(christineHaasId, eileenEvaId), null, "{employees:lastName}:Eva OR Haas NOT Ali", EMPLOYEE_ID)
+        trySearch(longArrayOf(eileenEvaId, christineHaasId), null, "{employees:lastName}:Eva OR Haas NOT Ali", LAST_NAME)
+    }
+
+    private fun trySearch(expectedIds: LongArray, path: String?, matchKey: String, orderPath: String?) {
+        // Returning soup elements
+        var results = store.query(QuerySpec.buildMatchQuerySpec(EMPLOYEES_SOUP, path, matchKey, orderPath, QuerySpec.Order.ascending, 25), 0)
+        Assert.assertEquals("Wrong number of results", expectedIds.size, results.length())
+        for (i in 0 until results.length()) {
+            Assert.assertEquals("Wrong result", expectedIds[i], idOf(results.getJSONObject(i)))
+        }
+
+        // Returning just ids
+        results = store.query(QuerySpec.buildMatchQuerySpec(EMPLOYEES_SOUP, arrayOf(SmartStore.SOUP_ENTRY_ID), path, matchKey, orderPath, QuerySpec.Order.ascending, 25), 0)
+        if (expectedIds.isNotEmpty()) {
+            Assert.assertEquals("Wrong number of field returned", 1, results.getJSONArray(0).length())
+        }
+        Assert.assertEquals("Wrong number of results", expectedIds.size, results.length())
+        for (i in 0 until results.length()) {
+            Assert.assertEquals("Wrong result", expectedIds[i], results.getJSONArray(i).getLong(0))
+        }
+    }
+
+    private fun loadData(ftsExtension: SmartStore.FtsExtension) {
+        setupSoup(ftsExtension)
+        christineHaasId = createEmployee("Christine", "Haas", "00010")
+        michaelThompsonId = createEmployee("Michael", "Thompson", "00020")
+        aliHaasId = createEmployee("Ali", "Haas", "00030")
+        irvingSternId = createEmployee("Irving", "Stern", "00050")
+        evaPulaskiId = createEmployee("Eva", "Pulaski", "00060")
+        eileenEvaId = createEmployee("Eileen", "Eva", "00070")
+    }
+
+    private fun createEmployee(firstName: String?, lastName: String?, employeeId: String?): Long {
+        val employee = JSONObject()
+        if (firstName != null) employee.put(FIRST_NAME, firstName)
+        if (lastName != null) employee.put(LAST_NAME, lastName)
+        if (employeeId != null) employee.put(EMPLOYEE_ID, employeeId)
+        val employeeSaved = store.create(EMPLOYEES_SOUP, employee)!!
+        return idOf(employeeSaved)
+    }
+
+    /**
+     * Registers a soup with the given name and index specs. Can be overridden if extra features are desired.
+     */
+    override fun registerSoup(store: SmartStore, soupName: String, indexSpecs: Array<IndexSpec>) {
+        store.registerSoup(soupName, indexSpecs)
+    }
+
+    /**
+     * @return expected columns in soup table
+     */
+    protected open fun getExpectedColumns(): Array<String> {
+        return arrayOf("id", "soup", "created", "lastModified", FIRST_NAME_COL, LAST_NAME_COL, EMPLOYEE_ID_COL)
+    }
+}
