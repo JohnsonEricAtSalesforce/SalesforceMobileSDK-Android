@@ -239,7 +239,7 @@ open class SmartStoreSDKManager protected constructor(
     /**
      * Setup global store using config found in res/raw/globalstore.json
      */
-    fun setupGlobalStoreFromDefaultConfig() {
+    open fun setupGlobalStoreFromDefaultConfig() {
         SmartStoreLogger.d(TAG, "Setting up global store using config found in res/raw/globalstore.json")
         val config = StoreConfig(context, R.raw.globalstore)
         if (config.hasSoups()) {
@@ -250,7 +250,7 @@ open class SmartStoreSDKManager protected constructor(
     /**
      * Setup user store using config found in res/raw/userstore.json
      */
-    fun setupUserStoreFromDefaultConfig() {
+    open fun setupUserStoreFromDefaultConfig() {
         SmartStoreLogger.d(TAG, "Setting up user store using config found in res/raw/userstore.json")
         val config = StoreConfig(context, R.raw.userstore)
         if (config.hasSoups()) {

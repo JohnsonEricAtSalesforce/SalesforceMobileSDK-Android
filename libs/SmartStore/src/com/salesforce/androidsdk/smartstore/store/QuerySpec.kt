@@ -285,7 +285,7 @@ class QuerySpec private constructor(
 
         @JvmStatic
         @Throws(JSONException::class)
-        fun fromJSON(soupName: String, querySpecJson: JSONObject): QuerySpec {
+        fun fromJSON(soupName: String?, querySpecJson: JSONObject): QuerySpec {
             val queryType = QueryType.valueOf(querySpecJson.getString(QUERY_TYPE))
             val selectPaths = JSONObjectHelper.optStringArray(querySpecJson, SELECT_PATHS)
             val path = JSONObjectHelper.optString(querySpecJson, INDEX_PATH)
@@ -300,10 +300,10 @@ class QuerySpec private constructor(
 
             // Building query spec
             return when (queryType) {
-                QueryType.exact -> buildExactQuerySpec(soupName, selectPaths, path!!, matchKey!!, orderPath, order, pageSize)
-                QueryType.range -> buildRangeQuerySpec(soupName, selectPaths, path, beginKey, endKey, orderPath, order, pageSize)
-                QueryType.like -> buildLikeQuerySpec(soupName, selectPaths, path!!, likeKey!!, orderPath, order, pageSize)
-                QueryType.match -> buildMatchQuerySpec(soupName, selectPaths, path, matchKey!!, orderPath, order, pageSize)
+                QueryType.exact -> buildExactQuerySpec(soupName!!, selectPaths, path!!, matchKey!!, orderPath, order, pageSize)
+                QueryType.range -> buildRangeQuerySpec(soupName!!, selectPaths, path, beginKey, endKey, orderPath, order, pageSize)
+                QueryType.like -> buildLikeQuerySpec(soupName!!, selectPaths, path!!, likeKey!!, orderPath, order, pageSize)
+                QueryType.match -> buildMatchQuerySpec(soupName!!, selectPaths, path, matchKey!!, orderPath, order, pageSize)
                 QueryType.smart -> buildSmartQuerySpec(smartSql!!, pageSize)
             }
         }

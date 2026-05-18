@@ -38,12 +38,13 @@ import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.HttpAccess.NoNetworkException
 import com.salesforce.androidsdk.config.BootConfig
-import com.salesforce.androidsdk.config.BootConfig.getBootConfig
-import com.salesforce.androidsdk.config.BootConfig.isAbsoluteUrl
-import com.salesforce.androidsdk.config.BootConfig.validateBootConfig
-import com.salesforce.androidsdk.config.LoginServerManager.PRODUCTION_LOGIN_URL
-import com.salesforce.androidsdk.config.LoginServerManager.SANDBOX_LOGIN_URL
-import com.salesforce.androidsdk.config.LoginServerManager.WELCOME_LOGIN_URL
+import com.salesforce.androidsdk.config.BootConfig.Companion.getBootConfig
+import com.salesforce.androidsdk.config.BootConfig.Companion.isAbsoluteUrl
+import com.salesforce.androidsdk.config.BootConfig.Companion.validateBootConfig
+import com.salesforce.androidsdk.config.LoginServerManager
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.PRODUCTION_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.SANDBOX_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.WELCOME_LOGIN_URL
 import com.salesforce.androidsdk.phonegap.app.SalesforceHybridSDKManager
 import com.salesforce.androidsdk.phonegap.ui.SalesforceWebViewClientHelper.getAppHomeUrl
 import com.salesforce.androidsdk.phonegap.ui.SalesforceWebViewClientHelper.hasCachedAppHome
@@ -55,7 +56,7 @@ import com.salesforce.androidsdk.rest.ClientManager
 import com.salesforce.androidsdk.rest.RestClient
 import com.salesforce.androidsdk.rest.RestClient.AsyncRequestCallback
 import com.salesforce.androidsdk.rest.RestRequest
-import com.salesforce.androidsdk.rest.RestRequest.getCheapRequest
+import com.salesforce.androidsdk.rest.RestRequest.Companion.getCheapRequest
 import com.salesforce.androidsdk.rest.RestResponse
 import com.salesforce.androidsdk.ui.SalesforceActivityDelegate
 import com.salesforce.androidsdk.ui.SalesforceActivityInterface
@@ -198,7 +199,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
 
             // Logged in
             else -> {
-                salesforceCookieManager.setCookies(UserAccountManager.getInstance().currentUser)
+                UserAccountManager.getInstance().currentUser?.let { salesforceCookieManager.setCookies(it) }
 
                 when {
                     // Web app never loaded
@@ -416,7 +417,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
 
         when {
             restClient != null -> {
-                val credentials = restClient?.jsonCredentials
+                val credentials = restClient?.getJSONCredentials()
                 callbackContext?.success(credentials)
             }
 
@@ -570,7 +571,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
                     val loginServer = SalesforceHybridSDKManager
                         .getInstance()
                         .loginServerManager
-                        .selectedLoginServer
+                        .getSelectedLoginServer()
                         ?.url
                         ?.trim { it <= ' ' } ?: return@withTimeout
 
@@ -592,7 +593,7 @@ open class SalesforceDroidGapActivity : CordovaActivity(), SalesforceActivityInt
             if (intent.action == ClientManager.ACCESS_TOKEN_REFRESH_INTENT
                 || intent.action == ClientManager.INSTANCE_URL_UPDATE_INTENT) {
                 d(TAG, "TokenRefreshReceiver onReceive")
-                salesforceCookieManager.setCookies(UserAccountManager.getInstance().currentUser)
+                UserAccountManager.getInstance().currentUser?.let { salesforceCookieManager.setCookies(it) }
             }
         }
     }

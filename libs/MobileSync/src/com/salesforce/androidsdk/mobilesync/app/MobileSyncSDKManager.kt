@@ -58,7 +58,7 @@ open class MobileSyncSDKManager protected constructor(
     /**
      * Setup global syncs using config found in res/raw/globalsyncs.json
      */
-    fun setupGlobalSyncsFromDefaultConfig() {
+    open fun setupGlobalSyncsFromDefaultConfig() {
         MobileSyncLogger.d(TAG, "Setting up global syncs using config found in res/raw/globalsyncs.json")
         val config = SyncsConfig(context, R.raw.globalsyncs)
         if (config.hasSyncs()) {
@@ -69,7 +69,7 @@ open class MobileSyncSDKManager protected constructor(
     /**
      * Setup user syncs using config found in res/raw/usersyncs.json
      */
-    fun setupUserSyncsFromDefaultConfig() {
+    open fun setupUserSyncsFromDefaultConfig() {
         MobileSyncLogger.d(TAG, "Setting up user syncs using config found in res/raw/usersyncs.json")
         val config = SyncsConfig(context, R.raw.usersyncs)
         if (config.hasSyncs()) {
