@@ -55,23 +55,23 @@ import androidx.fragment.app.FragmentActivity
 import com.salesforce.androidsdk.R.string.sf__biometric_opt_in_title
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.NativeLoginManager.StartRegistrationRequestBody.UserData
-import com.salesforce.androidsdk.auth.OAuth2.ATTESTATION
-import com.salesforce.androidsdk.auth.OAuth2.AUTHORIZATION
-import com.salesforce.androidsdk.auth.OAuth2.AUTHORIZATION_CODE
-import com.salesforce.androidsdk.auth.OAuth2.CLIENT_ID
-import com.salesforce.androidsdk.auth.OAuth2.CODE
-import com.salesforce.androidsdk.auth.OAuth2.CODE_CHALLENGE
-import com.salesforce.androidsdk.auth.OAuth2.CODE_VERIFIER
-import com.salesforce.androidsdk.auth.OAuth2.GRANT_TYPE
-import com.salesforce.androidsdk.auth.OAuth2.HYBRID_AUTH_CODE
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_AUTH_PATH
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_ENDPOINT_HEADLESS_FORGOT_PASSWORD
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_ENDPOINT_HEADLESS_INIT_PASSWORDLESS_LOGIN
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_ENDPOINT_HEADLESS_INIT_REGISTRATION
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_TOKEN_PATH
-import com.salesforce.androidsdk.auth.OAuth2.REDIRECT_URI
-import com.salesforce.androidsdk.auth.OAuth2.RESPONSE_TYPE
-import com.salesforce.androidsdk.auth.OAuth2.SFDC_COMMUNITY_URL
+import com.salesforce.androidsdk.auth.OAuth2.Companion.ATTESTATION
+import com.salesforce.androidsdk.auth.OAuth2.Companion.AUTHORIZATION
+import com.salesforce.androidsdk.auth.OAuth2.Companion.AUTHORIZATION_CODE
+import com.salesforce.androidsdk.auth.OAuth2.Companion.CLIENT_ID
+import com.salesforce.androidsdk.auth.OAuth2.Companion.CODE
+import com.salesforce.androidsdk.auth.OAuth2.Companion.CODE_CHALLENGE
+import com.salesforce.androidsdk.auth.OAuth2.Companion.CODE_VERIFIER
+import com.salesforce.androidsdk.auth.OAuth2.Companion.GRANT_TYPE
+import com.salesforce.androidsdk.auth.OAuth2.Companion.HYBRID_AUTH_CODE
+import com.salesforce.androidsdk.auth.OAuth2.Companion.OAUTH_AUTH_PATH
+import com.salesforce.androidsdk.auth.OAuth2.Companion.OAUTH_ENDPOINT_HEADLESS_FORGOT_PASSWORD
+import com.salesforce.androidsdk.auth.OAuth2.Companion.OAUTH_ENDPOINT_HEADLESS_INIT_PASSWORDLESS_LOGIN
+import com.salesforce.androidsdk.auth.OAuth2.Companion.OAUTH_ENDPOINT_HEADLESS_INIT_REGISTRATION
+import com.salesforce.androidsdk.auth.OAuth2.Companion.OAUTH_TOKEN_PATH
+import com.salesforce.androidsdk.auth.OAuth2.Companion.REDIRECT_URI
+import com.salesforce.androidsdk.auth.OAuth2.Companion.RESPONSE_TYPE
+import com.salesforce.androidsdk.auth.OAuth2.Companion.SFDC_COMMUNITY_URL
 import com.salesforce.androidsdk.auth.OAuth2.TokenEndpointResponse
 import com.salesforce.androidsdk.auth.interfaces.NativeLoginManager
 import com.salesforce.androidsdk.auth.interfaces.NativeLoginManager.StartRegistrationResult
@@ -144,7 +144,7 @@ internal class NativeLoginManager(
     override val biometricAuthenticationUsername: String?
         get() {
             return if (bioAuthLocked) {
-                accountManager.currentUser.username
+                accountManager.currentUser?.username
             } else {
                 null
             }
@@ -240,7 +240,7 @@ internal class NativeLoginManager(
     }
 
     private suspend fun suspendFinishAuthFlow(tokenResponse: RestResponse): NativeLoginResult {
-        val tokenEndpointResponse = TokenEndpointResponse(tokenResponse.rawResponse)
+        val tokenEndpointResponse = TokenEndpointResponse(tokenResponse.rawResponse!!)
         tokenResponse.consumeQuietly()
 
         return withContext(Default) {
@@ -269,15 +269,13 @@ internal class NativeLoginManager(
         return suspendCoroutine { continuation ->
             restClient.sendAsync(request, object : AsyncRequestCallback {
 
-                    override fun onSuccess(request: RestRequest?, response: RestResponse?) {
+                    override fun onSuccess(request: RestRequest, response: RestResponse) {
                         continuation.resume(response)
                     }
 
-                    override fun onError(exception: Exception?) {
-                        if (exception != null) {
-                            SalesforceSDKLogger.e(TAG, "Authentication call was unsuccessful.", exception)
-                            continuation.resumeWithException(exception)
-                        }
+                    override fun onError(exception: Exception) {
+                        SalesforceSDKLogger.e(TAG, "Authentication call was unsuccessful.", exception)
+                        continuation.resumeWithException(exception)
                     }
                 })
         }
@@ -992,9 +990,9 @@ internal class NativeLoginManager(
 
         clientManager.getRestClient(activity) { client ->
             runCatching {
-                client.oAuthRefreshInterceptor.refreshAccessToken()
-            }.onFailure { e ->
-                e(TAG, "Error encountered while unlocking.", e)
+                client?.oAuthRefreshInterceptor?.refreshAccessToken()
+            }.onFailure { throwable ->
+                SalesforceSDKLogger.e(TAG, "Error encountered while unlocking.", throwable)
             }
             bioAuthManager?.onUnlock()
             activity.finish()

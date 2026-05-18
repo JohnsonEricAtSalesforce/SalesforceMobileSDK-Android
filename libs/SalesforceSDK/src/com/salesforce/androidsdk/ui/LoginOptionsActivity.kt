@@ -424,8 +424,8 @@ fun LoginOptionsScreenPreview() {
         useHybridToken = MutableLiveData(false),
         overrideConfig = null,
         bootConfig = object : BootConfig() {
-            override fun getRemoteAccessConsumerKey() = consumerKey
-            override fun getOauthRedirectURI() = redirect
+            override val remoteAccessConsumerKey: String? = consumerKey
+            override val oauthRedirectURI: String? = redirect
         },
     )
 }

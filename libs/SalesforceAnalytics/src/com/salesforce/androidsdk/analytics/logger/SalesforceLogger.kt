@@ -69,7 +69,11 @@ open class SalesforceLogger private constructor(
      * Returns the log level currently being used.
      */
     var logLevel: Level = Level.DEBUG
-        private set
+        set(value) {
+            field = value
+            val sp = context.getSharedPreferences(SF_LOGGER_PREFS, Context.MODE_PRIVATE)
+            sp.edit().putString(componentName, value.toString()).apply()
+        }
 
     init {
         readLoggerPrefs()
@@ -106,14 +110,6 @@ open class SalesforceLogger private constructor(
      */
     fun getFileLogger(): FileLogger? = fileLogger
 
-    /**
-     * Sets the log level to be used.
-     *
-     * @param level Log level.
-     */
-    fun setLogLevel(level: Level) {
-        storeLoggerPrefs(level)
-    }
 
     /**
      * Disables file logging.
@@ -315,15 +311,6 @@ open class SalesforceLogger private constructor(
         return dateFormat.format(date)
     }
 
-    @Synchronized
-    private fun storeLoggerPrefs(level: Level) {
-        val sp = context.getSharedPreferences(SF_LOGGER_PREFS, Context.MODE_PRIVATE)
-        val editor = sp.edit()
-        editor.putString(componentName, level.toString())
-        editor.apply()
-        logLevel = level
-    }
-
     private fun readLoggerPrefs() {
         val sp = context.getSharedPreferences(SF_LOGGER_PREFS, Context.MODE_PRIVATE)
         var level = Level.DEBUG
@@ -331,7 +318,8 @@ open class SalesforceLogger private constructor(
             level = Level.ERROR
         }
         if (!sp.contains(componentName)) {
-            storeLoggerPrefs(level)
+            logLevel = level
+            return
         }
         val logLevelString = sp.getString(componentName, level.toString())!!
         logLevel = Level.valueOf(logLevelString)

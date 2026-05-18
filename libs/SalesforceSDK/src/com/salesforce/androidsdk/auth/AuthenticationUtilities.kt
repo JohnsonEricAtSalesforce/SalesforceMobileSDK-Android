@@ -39,9 +39,9 @@ import com.salesforce.androidsdk.R.string.sf__managed_app_error
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.accounts.UserAccountManager
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_DEFAULT
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_FIRST_LOGIN
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_LOGIN
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_DEFAULT
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_FIRST_LOGIN
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_LOGIN
 import com.salesforce.androidsdk.analytics.EventBuilderHelper.createAndStoreEventSync
 import com.salesforce.androidsdk.analytics.SalesforceAnalyticsManager
 import com.salesforce.androidsdk.app.Features.FEATURE_BIOMETRIC_AUTH
@@ -49,13 +49,13 @@ import com.salesforce.androidsdk.app.Features.FEATURE_SCREEN_LOCK
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager.Companion.encryptionKey
 import com.salesforce.androidsdk.auth.OAuth2.TokenEndpointResponse
-import com.salesforce.androidsdk.auth.OAuth2.addAuthorizationHeader
-import com.salesforce.androidsdk.auth.OAuth2.callIdentityService
+import com.salesforce.androidsdk.auth.OAuth2.Companion.addAuthorizationHeader
+import com.salesforce.androidsdk.auth.OAuth2.Companion.callIdentityService
 import com.salesforce.androidsdk.config.LoginServerManager
 import com.salesforce.androidsdk.config.RuntimeConfig
-import com.salesforce.androidsdk.config.RuntimeConfig.getRuntimeConfig
+import com.salesforce.androidsdk.config.RuntimeConfig.Companion.getRuntimeConfig
 import com.salesforce.androidsdk.push.PushMessaging.register
-import com.salesforce.androidsdk.rest.RestClient.clearCaches
+import com.salesforce.androidsdk.rest.RestClient.Companion.clearCaches
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager.Companion.isBiometricAuthenticationEnabled
 import com.salesforce.androidsdk.security.ScreenLockManager
@@ -149,7 +149,7 @@ internal suspend fun onAuthFlowComplete(
 
     val userIdentity = actualFetchUserIdentity(tokenResponse)
     val mustBeManagedApp = userIdentity?.customPermissions?.optBoolean(MUST_BE_MANAGED_APP_PERM) ?: false
-    if (mustBeManagedApp && !runtimeConfig.isManagedApp) {
+    if (mustBeManagedApp && !runtimeConfig.isManagedApp()) {
         onAuthFlowError(
             context.getString(sf__generic_authentication_error_title),
             context.getString(sf__managed_app_error), null
@@ -241,11 +241,11 @@ private fun fetchIsSalesforceIntegrationUser(
     val builder: Builder = Builder().url(userInfoEndpoint).get()
     addAuthorizationHeader(
         builder,
-        tokenEndpointResponse?.authToken
+        tokenEndpointResponse?.authToken!!
     )
     val request = builder.build()
 
-    val clientBuilder = HttpAccess.DEFAULT.okHttpClient.newBuilder()
+    val clientBuilder = HttpAccess.DEFAULT!!.okHttpClient.newBuilder()
     clientBuilder.addNetworkInterceptor { chain: Interceptor.Chain ->
         val url = chain.request().url
         val interceptedRequestBuilder = chain.request().newBuilder()
@@ -254,7 +254,7 @@ private fun fetchIsSalesforceIntegrationUser(
         if (url.toString() != userInfoEndpoint && url.isSalesforceUrl()) {
             addAuthorizationHeader(
                 interceptedRequestBuilder,
-                tokenEndpointResponse?.authToken,
+                tokenEndpointResponse.authToken!!,
             )
         }
 
@@ -302,17 +302,13 @@ private fun logAddAccount(account: UserAccount?, loginServerManager: LoginServer
     runCatching {
         val users = UserAccountManager.getInstance().authenticatedUsers
         attributes.put("numUsers", users?.size ?: 0)
-        val servers = loginServerManager.loginServers
-        attributes.put("numLoginServers", servers?.size ?: 0)
-        servers?.let { serversUnwrapped ->
-            val serversJson = JSONArray()
-            for (server in serversUnwrapped) {
-                server?.let { serverUnwrapped ->
-                    serversJson.put(serverUnwrapped.url)
-                }
-            }
-            attributes.put("loginServers", serversJson)
+        val servers = loginServerManager.getLoginServers()
+        attributes.put("numLoginServers", servers.size)
+        val serversJson = JSONArray()
+        for (server in servers) {
+            serversJson.put(server.url)
         }
+        attributes.put("loginServers", serversJson)
         createAndStoreEventSync("addUser", account, TAG, attributes)
     }.onFailure { throwable ->
         e(TAG, "Exception thrown while creating JSON", throwable)
@@ -328,9 +324,9 @@ private suspend fun fetchUserIdentity(
     return runCatching {
         withContext(Default) {
             callIdentityService(
-                HttpAccess.DEFAULT,
-                tokenResponse.idUrlWithInstance,
-                tokenResponse.authToken,
+                HttpAccess.DEFAULT!!,
+                tokenResponse.idUrlWithInstance!!,
+                tokenResponse.authToken!!,
             )
         }
     }.onFailure { throwable ->
@@ -461,7 +457,7 @@ internal fun handleDuplicateUserAccount(
     userAccountManager.authenticatedUsers?.let { existingUsers ->
         // Check if the user already exists
         if (existingUsers.contains(account)) {
-            val duplicateUserAccount = existingUsers.removeAt(existingUsers.indexOf(account))
+            val duplicateUserAccount = existingUsers[existingUsers.indexOf(account)]
             clearCaches()
             userAccountManager.clearCachedCurrentUser()
 
@@ -484,9 +480,9 @@ internal fun handleDuplicateUserAccount(
                     }
                     CoroutineScope(IO).launch {
                         revokeRefreshToken(
-                            HttpAccess.DEFAULT,
+                            HttpAccess.DEFAULT!!,
                             uri,
-                            duplicateUserAccount.refreshTokenForPersistence,
+                            duplicateUserAccount.refreshTokenForPersistence!!,
                             OAuth2.LogoutReason.REFRESH_TOKEN_ROTATED,
                         )
                     }
@@ -519,7 +515,7 @@ private fun UserAccountManager.persistAccount(
     accountType: String = SalesforceSDKManager.getInstance().accountType,
     acctManager: AccountManager = AccountManager.get(SalesforceSDKManager.getInstance().appContext),
 ) {
-    val account = Account(userAccount.accountName, accountType)
+    val account = Account(userAccount.accountName!!, accountType)
     // Encrypt the in-memory snapshot rather than getRefreshToken(), which performs a lookup.
     val password = SalesforceSDKManager.encrypt(userAccount.refreshTokenForPersistence, encryptionKey)
     val created = acctManager.addAccountExplicitly(account, password, /* userdata = */ Bundle())

@@ -219,7 +219,8 @@ open class PushService {
                 SalesforceSDKManager.getInstance().appContext
             ),
             MOBILE_PUSH_SERVICE_DEVICE,
-            requestBodyJsonFields
+            @Suppress("UNCHECKED_CAST")
+            requestBodyJsonFields as Map<String, Any>?
         )
     )
 
@@ -479,7 +480,7 @@ open class PushService {
                     SalesforceSDKManager.getInstance().appContext
                 ),
                 MOBILE_PUSH_SERVICE_DEVICE,
-                registeredId
+                registeredId!!
             )
         )
     }
@@ -545,7 +546,7 @@ open class PushService {
                     account.csrfToken
                 ),
                 account.authToken,
-                HttpAccess.DEFAULT,
+                HttpAccess.DEFAULT!!,
                 AccMgrAuthTokenProvider(
                     clientManager,
                     account.instanceServer,
@@ -583,7 +584,7 @@ open class PushService {
         internal const val NOT_ENABLED = "not_enabled"
         const val PUSH_NOTIFICATION_KEY_NAME = "PushNotificationKey"
         val pushNotificationKeyName = SalesforceKeyGenerator
-            .getUniqueId(PUSH_NOTIFICATION_KEY_NAME)
+            .getUniqueId(PUSH_NOTIFICATION_KEY_NAME)!!
             .replace("[^A-Za-z0-9]".toRegex(), "")
 
         /**
@@ -699,7 +700,7 @@ open class PushService {
                     }
 
                 // Send broadcast now to finish logout if we are offline.
-                if (!HttpAccess.DEFAULT.hasNetwork()) {
+                if (!HttpAccess.DEFAULT!!.hasNetwork()) {
                     context.sendBroadcast(
                         Intent(
                             UNREGISTERED_ATTEMPT_COMPLETE_EVENT

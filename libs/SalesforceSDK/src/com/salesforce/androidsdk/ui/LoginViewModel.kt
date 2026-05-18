@@ -57,17 +57,17 @@ import com.salesforce.androidsdk.app.SalesforceSDKManager.Theme.DARK
 import com.salesforce.androidsdk.app.SalesforceSDKManager.Theme.LIGHT
 import com.salesforce.androidsdk.auth.HttpAccess
 import com.salesforce.androidsdk.auth.OAuth2
-import com.salesforce.androidsdk.auth.OAuth2.ATTESTATION
+import com.salesforce.androidsdk.auth.OAuth2.Companion.ATTESTATION
 import com.salesforce.androidsdk.auth.OAuth2.TokenEndpointResponse
-import com.salesforce.androidsdk.auth.OAuth2.exchangeCode
-import com.salesforce.androidsdk.auth.OAuth2.getFrontdoorUrl
+import com.salesforce.androidsdk.auth.OAuth2.Companion.exchangeCode
+import com.salesforce.androidsdk.auth.OAuth2.Companion.getFrontdoorUrl
 import com.salesforce.androidsdk.auth.defaultBuildAccountName
 import com.salesforce.androidsdk.auth.onAuthFlowComplete
 import com.salesforce.androidsdk.config.BootConfig
 import com.salesforce.androidsdk.config.LoginServerManager.LoginServer
 import com.salesforce.androidsdk.config.OAuthConfig
 import com.salesforce.androidsdk.config.RuntimeConfig.ConfigKey.OnlyShowAuthorizedHosts
-import com.salesforce.androidsdk.config.RuntimeConfig.getRuntimeConfig
+import com.salesforce.androidsdk.config.RuntimeConfig.Companion.getRuntimeConfig
 import com.salesforce.androidsdk.security.SalesforceKeyGenerator.getRandom128ByteKey
 import com.salesforce.androidsdk.security.SalesforceKeyGenerator.getSHA256Hash
 import com.salesforce.androidsdk.ui.LoginActivity.Companion.ABOUT_BLANK
@@ -196,7 +196,7 @@ open class LoginViewModel(val bootConfig: BootConfig) : ViewModel() {
     @Deprecated("Will be removed in Mobile SDK 14.0, please use " +
             "SalesforceSDKManager.getInstance().appConfigForLoginHost.")
     @VisibleForTesting(PROTECTED)
-    internal open var clientId: String = bootConfig.remoteAccessConsumerKey
+    internal open var clientId: String = bootConfig.remoteAccessConsumerKey!!
 
     /** Authorization Display Type used for login. */
     protected open val authorizationDisplayType =
@@ -606,11 +606,11 @@ open class LoginViewModel(val bootConfig: BootConfig) : ViewModel() {
             val verifier = if (isUsingFrontDoorBridge) frontdoorBridgeCodeVerifier else codeVerifier
 
             val tokenResponse = exchangeCode(
-                HttpAccess.DEFAULT,
+                HttpAccess.DEFAULT!!,
                 URI.create(server),
                 consumerKey,
-                code,
-                verifier,
+                code!!,
+                verifier!!,
                 oAuthConfig.redirectUri,
             )
 

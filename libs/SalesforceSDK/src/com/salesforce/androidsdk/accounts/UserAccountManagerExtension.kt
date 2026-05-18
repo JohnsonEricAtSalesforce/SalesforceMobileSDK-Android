@@ -27,7 +27,7 @@
 package com.salesforce.androidsdk.accounts
 
 import android.content.Intent
-import com.salesforce.androidsdk.accounts.UserAccountManager.getInstance
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.getInstance
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.config.OAuthConfig
 import com.salesforce.androidsdk.ui.TokenMigrationActivity

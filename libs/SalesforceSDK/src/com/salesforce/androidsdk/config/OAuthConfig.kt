@@ -37,8 +37,8 @@ data class OAuthConfig(
 ): Parcelable {
     
     internal constructor(bootConfig: BootConfig): this(
-        bootConfig.remoteAccessConsumerKey,
-        bootConfig.oauthRedirectURI,
+        bootConfig.remoteAccessConsumerKey!!,
+        bootConfig.oauthRedirectURI!!,
         scopes = bootConfig.oauthScopes?.ifEmpty { null }?.toList(),
     )
 

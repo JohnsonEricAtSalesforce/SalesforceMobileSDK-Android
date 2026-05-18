@@ -174,9 +174,9 @@ internal fun TestablePickerBottomSheet(
     val onNewLoginServerSelected = { newSelectedServer: Any?, closePicker: Boolean ->
         if (newSelectedServer != null && newSelectedServer is LoginServer) {
             viewModel.showServerPicker.value = !closePicker
-            if (newSelectedServer != SalesforceSDKManager.getInstance().loginServerManager.selectedLoginServer) {
+            if (newSelectedServer != SalesforceSDKManager.getInstance().loginServerManager.getSelectedLoginServer()) {
                 viewModel.loading.value = true
-                SalesforceSDKManager.getInstance().loginServerManager.selectedLoginServer = newSelectedServer
+                SalesforceSDKManager.getInstance().loginServerManager.setSelectedLoginServer(newSelectedServer)
             }
         }
     }
@@ -190,7 +190,7 @@ internal fun TestablePickerBottomSheet(
     val onUserSwitchCancel = {
         activity?.finish()
         if (userAccountManager.currentUser == null) {
-            userAccountManager.switchToUser(userAccountManager.authenticatedUsers.first())
+            userAccountManager.switchToUser(userAccountManager.authenticatedUsers!!.first())
         }
     }
     val sheetState = rememberModalBottomSheetState(
@@ -218,8 +218,8 @@ internal fun TestablePickerBottomSheet(
                 addButtonVisible = viewModel.serverPickerAddConnectionButtonVisible,
                 pickerStyle = pickerStyle,
                 sheetState = sheetState,
-                list = loginServerManager.loginServers,
-                selectedListItem = loginServerManager.selectedLoginServer,
+                list = loginServerManager.getLoginServers(),
+                selectedListItem = loginServerManager.getSelectedLoginServer(),
                 onItemSelected = onNewLoginServerSelected,
                 getValidServer = { serverUrl: String -> viewModel.getValidServerUrl(serverUrl) },
                 addNewLoginServer = addNewLoginServer,
@@ -230,7 +230,7 @@ internal fun TestablePickerBottomSheet(
             PickerBottomSheet(
                 pickerStyle = pickerStyle,
                 sheetState = sheetState,
-                list = userAccountManager.authenticatedUsers,
+                list = userAccountManager.authenticatedUsers ?: emptyList(),
                 selectedListItem = userAccountManager.currentUser,
                 onItemSelected = onUserAccountSelected,
                 addNewAccount = {
@@ -422,8 +422,8 @@ internal fun PickerBottomSheet(
                                                 PickerStyle.UserAccountPicker -> {
                                                     if (listItem is UserAccount) {
                                                         UserAccountListItem(
-                                                            displayName = listItem.displayName,
-                                                            loginServer = listItem.communityUrl ?: listItem.instanceServer,
+                                                            displayName = listItem.displayName ?: "",
+                                                            loginServer = listItem.communityUrl ?: listItem.instanceServer ?: "",
                                                             selected = selected,
                                                             onItemSelected = { onItemSelected(listItem, true) },
                                                             profilePhoto = listItem.profilePhoto?.let { bitmap ->

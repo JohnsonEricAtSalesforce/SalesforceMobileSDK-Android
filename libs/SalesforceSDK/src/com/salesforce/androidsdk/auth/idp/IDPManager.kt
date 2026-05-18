@@ -59,7 +59,7 @@ internal class IDPLoginFlow(context:Context, val user:UserAccount, val spConfig:
             val activeFlow = IDPLoginFlow(context, user, spConfig, onStatusUpdate)
             idpManager.startActiveFlow(activeFlow)
 
-            val idpToSpRequest = IDPToSPRequest(orgId = user.orgId, userId = user.userId)
+            val idpToSpRequest = IDPToSPRequest(orgId = user.orgId!!, userId = user.userId!!)
             idpManager.send(context, idpToSpRequest, spConfig.appPackageName)
             onStatusUpdate(Status.LOGIN_REQUEST_SENT_TO_SP)
         }

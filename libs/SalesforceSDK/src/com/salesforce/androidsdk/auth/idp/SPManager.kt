@@ -53,7 +53,7 @@ internal class SPLoginFlow private constructor(context:Context, val onStatusUpda
     : ActiveFlow(context) {
 
     val codeVerifier: String = SalesforceKeyGenerator.getRandom128ByteKey()
-    val codeChallenge: String = SalesforceKeyGenerator.getSHA256Hash(codeVerifier)
+    val codeChallenge: String = SalesforceKeyGenerator.getSHA256Hash(codeVerifier)!!
 
     companion object {
             private val TAG: String = SPLoginFlow::class.java.simpleName

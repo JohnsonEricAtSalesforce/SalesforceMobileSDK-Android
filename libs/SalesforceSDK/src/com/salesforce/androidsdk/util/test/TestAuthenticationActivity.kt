@@ -32,9 +32,9 @@ import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.salesforce.androidsdk.accounts.UserAccountBuilder
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_DEFAULT
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_FIRST_LOGIN
-import com.salesforce.androidsdk.accounts.UserAccountManager.USER_SWITCH_TYPE_LOGIN
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_DEFAULT
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_FIRST_LOGIN
+import com.salesforce.androidsdk.accounts.UserAccountManager.Companion.USER_SWITCH_TYPE_LOGIN
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.rest.ClientManager.AccMgrAuthTokenProvider
 import com.salesforce.androidsdk.util.test.TestCredentials.ACCOUNT_NAME
@@ -96,7 +96,7 @@ class TestAuthenticationActivity : AppCompatActivity() {
             null,
             REFRESH_TOKEN
         )
-        authTokenProvider.newAuthToken
+        authTokenProvider.getNewAuthToken()
         account.downloadProfilePhoto()
 
         val userAccountManager = SalesforceSDKManager.getInstance().userAccountManager

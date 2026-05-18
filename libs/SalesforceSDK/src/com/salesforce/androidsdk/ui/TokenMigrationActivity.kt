@@ -47,7 +47,7 @@ import com.salesforce.androidsdk.accounts.MigrationCallbackRegistry
 import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager.Theme.DARK
-import com.salesforce.androidsdk.auth.OAuth2.FRONTDOOR_URL_KEY
+import com.salesforce.androidsdk.auth.OAuth2.Companion.FRONTDOOR_URL_KEY
 import com.salesforce.androidsdk.auth.OAuth2.TokenEndpointResponse
 import com.salesforce.androidsdk.config.OAuthConfig
 import com.salesforce.androidsdk.rest.RestRequest
@@ -131,7 +131,7 @@ internal class TokenMigrationActivity : ComponentActivity() {
             val frontDoorUrl = withContext(IO) {
                 runCatching {
                     val authorizationPath = viewModel.generateMigrationAuthorizationPath(
-                        server = user.instanceServer,
+                        server = user.instanceServer!!,
                         migrationOAuthConfig = oAuthConfig,
                     )
                     val request = RestRequest.getRequestForSingleAccess(authorizationPath)
@@ -167,7 +167,7 @@ internal class TokenMigrationActivity : ComponentActivity() {
                     )
                 ) {
                     TokenMigrationView(
-                        webViewFactory = { buildAuthWebview(frontDoorUrl, resultCallback, user.instanceServer) }
+                        webViewFactory = { buildAuthWebview(frontDoorUrl, resultCallback, user.instanceServer!!) }
                     )
                 }
             }

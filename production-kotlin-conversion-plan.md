@@ -818,7 +818,7 @@ The 17 batches are organized into 4 parallel tracks for semantic conversion:
 
 | Batch | Files | Lines | Status |
 |-------|-------|-------|--------|
-| 04 | `SalesforceSDKLogger.java` (160), `UriFragmentParser.java` (82), `MapUtil.java` (146), `ResourceReaderHelper.java` (111), `UserSwitchReceiver.java` (52) | ~551 | [ ] |
+| 04 | `SalesforceSDKLogger.java` (160), `UriFragmentParser.java` (82), `MapUtil.java` (146), `ResourceReaderHelper.java` (111), `UserSwitchReceiver.java` (52) | ~551 | [✓] |
 | 05 | `JSONObjectHelper.java` (206), `EventsObservable.java` (96), `ManagedFilesHelper.java` (111), `AuthConfigUtil.java` (232) | ~645 | [ ] |
 | 06 | `EventsListenerQueue.java` (129), `TestCredentials.java` (111), `BroadcastListenerQueue.java` (69), `EventsObserver.java` (37) | ~346 | [ ] |
 
@@ -826,7 +826,7 @@ The 17 batches are organized into 4 parallel tracks for semantic conversion:
 
 | Batch | Files | Lines | Status |
 |-------|-------|-------|--------|
-| 07 | `AbstractPrefsManager.java` (175), `AdminPermsManager.java` (46), `AdminSettingsManager.java` (46), `RuntimeConfig.java` (223), `Features.java` (48), `SdkVersion.java` (166) | ~704 | [ ] |
+| 07 | `AbstractPrefsManager.java` (175), `AdminPermsManager.java` (46), `AdminSettingsManager.java` (46), `RuntimeConfig.java` (223), `Features.java` (48), `SdkVersion.java` (166) | ~704 | [✓] |
 | 08 | `BootConfig.java` (388), `LoginServerManager.java` (797) | ~1,185 | [ ] |
 
 #### Sub-phase 2c: Auth/Security — **Track B** (continued)
@@ -841,7 +841,7 @@ The 17 batches are organized into 4 parallel tracks for semantic conversion:
 
 | Batch | Files | Lines | Status |
 |-------|-------|-------|--------|
-| 12 | `ApiVersionStrings.java` (78), `BatchRequest.java` (95), `BatchResponse.java` (50), `CompositeRequest.java` (92), `CompositeResponse.java` (90), `CollectionResponse.java` (97), `PrimingRecordsResponse.java` (139) | ~641 | [ ] |
+| 12 | `ApiVersionStrings.java` (78), `BatchRequest.java` (95), `BatchResponse.java` (50), `CompositeRequest.java` (92), `CompositeResponse.java` (90), `CollectionResponse.java` (97), `PrimingRecordsResponse.java` (139) | ~641 | [✓] |
 | 13 | `FileRequests.java` (215), `ConnectUriBuilder.java` (117), `ApiRequests.java` (75), `RenditionType.java` (44), `RestResponse.java` (256) | ~707 | [ ] |
 | 14 | `RestRequest.java` (1,071) — solo large file | ~1,071 | [ ] |
 | 15 | `RestClient.java` (916) — solo large file, **SECURITY CRITICAL** | ~916 | [ ] |
@@ -851,7 +851,7 @@ The 17 batches are organized into 4 parallel tracks for semantic conversion:
 
 | Batch | Files | Lines | Status |
 |-------|-------|-------|--------|
-| 17 | `UserAccount.java` (1,106) — solo large file, **SECURITY CRITICAL** | ~1,106 | [ ] |
+| 17 | `UserAccount.java` (1,106) — solo large file, **SECURITY CRITICAL** | ~1,106 | [x] |
 | 18 | `UserAccountManager.java` (792), `SalesforceAnalyticsManager.java` (545) | ~1,337 | [ ] |
 
 #### Sub-phase 2f: Analytics/UI — **Track D** (continued)

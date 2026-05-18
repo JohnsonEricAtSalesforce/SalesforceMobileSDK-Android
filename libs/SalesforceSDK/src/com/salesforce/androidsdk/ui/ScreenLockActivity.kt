@@ -375,11 +375,11 @@ class ScreenLockActivity : FragmentActivity() {
         context: Context = getInstance().appContext,
         userAccountManager: UserAccountManager = getInstance().userAccountManager,
     ) {
-        val accounts = userAccountManager.getAuthenticatedUsers()
+        val accounts = userAccountManager.authenticatedUsers
 
         accounts?.forEach { account ->
             val accountPreferences = context.getSharedPreferences(
-                "$MOBILE_POLICY_PREF${account.getUserLevelFilenameSuffix()}",
+                "$MOBILE_POLICY_PREF${account.userLevelFilenameSuffix}",
                 MODE_PRIVATE
             )
             if (accountPreferences.getBoolean(SCREEN_LOCK, false)) {

@@ -26,7 +26,7 @@
  */
 package com.salesforce.androidsdk.rest
 
-import com.salesforce.androidsdk.rest.RestRequest.MEDIA_TYPE_JSON
+import com.salesforce.androidsdk.rest.RestRequest.Companion.MEDIA_TYPE_JSON
 import com.salesforce.androidsdk.rest.RestRequest.RestMethod.POST
 import com.salesforce.androidsdk.rest.SfapApiGenerationsResponseBody.Companion.fromJson
 import kotlinx.serialization.json.Json

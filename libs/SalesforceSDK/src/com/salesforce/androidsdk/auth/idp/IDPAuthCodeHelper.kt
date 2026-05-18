@@ -35,9 +35,9 @@ import com.salesforce.androidsdk.R
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.AppAttestationClient
-import com.salesforce.androidsdk.auth.OAuth2.ATTESTATION
-import com.salesforce.androidsdk.auth.OAuth2.FRONTDOOR_URL_KEY
-import com.salesforce.androidsdk.auth.OAuth2.getAuthorizationUrl
+import com.salesforce.androidsdk.auth.OAuth2.Companion.ATTESTATION
+import com.salesforce.androidsdk.auth.OAuth2.Companion.FRONTDOOR_URL_KEY
+import com.salesforce.androidsdk.auth.OAuth2.Companion.getAuthorizationUrl
 import com.salesforce.androidsdk.rest.ClientManager
 import com.salesforce.androidsdk.rest.RestClient
 import com.salesforce.androidsdk.rest.RestRequest
@@ -132,9 +132,7 @@ internal class IDPAuthCodeHelper @VisibleForTesting internal constructor(
             additionalParams
         )
 
-        return authorizationUri?.let {
-            it.path + (it.query?.let { query -> "?$query" } ?: "")
-        }
+        return authorizationUri.path + (authorizationUri.query?.let { query -> "?$query" } ?: "")
     }
 
     fun getFrontdoorUrl(restClient:RestClient, redirectUri: String): String? {

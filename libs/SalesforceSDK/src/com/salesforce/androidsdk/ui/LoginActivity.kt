@@ -130,17 +130,18 @@ import com.salesforce.androidsdk.app.SalesforceSDKManager.Theme.DARK
 import com.salesforce.androidsdk.auth.HttpAccess
 import com.salesforce.androidsdk.auth.OAuth2.OAuthFailedException
 import com.salesforce.androidsdk.auth.OAuth2.TokenEndpointResponse
-import com.salesforce.androidsdk.auth.OAuth2.swapJWTForTokens
+import com.salesforce.androidsdk.auth.OAuth2.Companion.swapJWTForTokens
 import com.salesforce.androidsdk.auth.idp.interfaces.SPManager.Status
 import com.salesforce.androidsdk.auth.idp.interfaces.SPManager.StatusUpdateCallback
 import com.salesforce.androidsdk.config.RuntimeConfig.ConfigKey.ManagedAppCertAlias
 import com.salesforce.androidsdk.config.RuntimeConfig.ConfigKey.RequireCertAuth
-import com.salesforce.androidsdk.config.RuntimeConfig.getRuntimeConfig
+import com.salesforce.androidsdk.config.RuntimeConfig.Companion.getRuntimeConfig
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager
 import com.salesforce.androidsdk.ui.components.LoginView
 import com.salesforce.androidsdk.util.EventsObservable
 import com.salesforce.androidsdk.util.EventsObservable.EventType.AuthWebViewPageFinished
 import com.salesforce.androidsdk.util.EventsObservable.EventType.LoginActivityCreateComplete
+import com.salesforce.androidsdk.util.SalesforceSDKLogger
 import com.salesforce.androidsdk.util.SalesforceSDKLogger.d
 import com.salesforce.androidsdk.util.SalesforceSDKLogger.e
 import com.salesforce.androidsdk.util.SalesforceSDKLogger.w
@@ -731,9 +732,9 @@ open class LoginActivity : FragmentActivity() {
             activity
         ) { client ->
             runCatching {
-                client.oAuthRefreshInterceptor.refreshAccessToken()
-            }.onFailure { e ->
-                e(TAG, "Error encountered while unlocking.", e)
+                client?.oAuthRefreshInterceptor?.refreshAccessToken()
+            }.onFailure { throwable ->
+                SalesforceSDKLogger.e(TAG, "Error encountered while unlocking.", throwable)
             }
             activity.finish()
         }
@@ -853,7 +854,7 @@ open class LoginActivity : FragmentActivity() {
                 if (viewModel.jwt.isNullOrBlank()) {
                     return@launch
                 } else {
-                    swapJWTForTokens(HttpAccess.DEFAULT, URI(viewModel.loginUrl.value), viewModel.jwt)
+                    swapJWTForTokens(HttpAccess.DEFAULT!!, URI(viewModel.loginUrl.value), viewModel.jwt!!)
                 }
             }.onFailure { throwable: Throwable ->
                 jwtFlowError(throwable)
@@ -1152,7 +1153,7 @@ open class LoginActivity : FragmentActivity() {
                             serverManager.addCustomLoginServer("Custom Domain", baseUrl)
 
                         else ->
-                            serverManager.selectedLoginServer = loginServer
+                            serverManager.setSelectedLoginServer(loginServer)
                     }
                 }.onFailure { throwable ->
                     e(TAG, "Unable to retrieve auth config.", throwable)

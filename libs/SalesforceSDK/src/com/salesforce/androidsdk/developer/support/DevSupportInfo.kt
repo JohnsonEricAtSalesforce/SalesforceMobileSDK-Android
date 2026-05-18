@@ -117,8 +117,8 @@ data class DevSupportInfo(
         fun parseBootConfigInfo(bootConfig: BootConfig): DevInfoList {
             with(bootConfig) {
                 val values = mutableListOf(
-                    "Consumer Key" to remoteAccessConsumerKey,
-                    "Redirect URI" to oauthRedirectURI,
+                    "Consumer Key" to (remoteAccessConsumerKey ?: ""),
+                    "Redirect URI" to (oauthRedirectURI ?: ""),
                     "Scopes" to (oauthScopes?.joinToString(separator = " ") ?: ""),
                 )
 
@@ -126,9 +126,9 @@ data class DevSupportInfo(
                     values.addAll(
                         listOf(
                             "Local" to isLocal.toString(),
-                            "Start Page" to startPage,
-                            "Unauthenticated Start Page" to unauthenticatedStartPage,
-                            "Error Page" to errorPage,
+                            "Start Page" to (startPage ?: ""),
+                            "Unauthenticated Start Page" to (unauthenticatedStartPage ?: ""),
+                            "Error Page" to (errorPage ?: ""),
                             "Should Authenticate" to shouldAuthenticate().toString(),
                             "Attempt Offline Load" to attemptOfflineLoad().toString(),
                         )
@@ -144,7 +144,7 @@ data class DevSupportInfo(
 
             var accessTokenExpiration = "Unknown"
             if (currentUser.tokenFormat == "jwt") {
-                val jwtAccessToken = JwtAccessToken(currentUser.authToken)
+                val jwtAccessToken = JwtAccessToken(currentUser.authToken!!)
                 val expirationDate = jwtAccessToken.expirationDate()
                 if (expirationDate != null) {
                     val dateFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
@@ -153,10 +153,10 @@ data class DevSupportInfo(
             }
 
             return "Current User" to listOf(
-                "Username" to currentUser.username,
-                "Consumer Key" to currentUser.clientId,
-                "Scopes" to currentUser.scope,
-                "Instance URL" to currentUser.instanceServer,
+                "Username" to (currentUser.username ?: ""),
+                "Consumer Key" to (currentUser.clientId ?: ""),
+                "Scopes" to (currentUser.scope ?: ""),
+                "Instance URL" to (currentUser.instanceServer ?: ""),
                 "Token Format" to (currentUser.tokenFormat?.ifBlank { "Opaque" } ?: "Opaque"),
                 "Access Token Expiration" to accessTokenExpiration,
                 "Beacon Child Consumer Key" to (currentUser.beaconChildConsumerKey ?: "None"),
@@ -165,10 +165,10 @@ data class DevSupportInfo(
 
         fun parseRuntimeConfig(config: RuntimeConfig): DevInfoList {
             val values = mutableListOf(
-                "Managed App" to config.isManagedApp.toString()
+                "Managed App" to config.isManagedApp().toString()
             )
 
-            if (config.isManagedApp) {
+            if (config.isManagedApp()) {
                 values.addAll(listOf(
                     "OAuth ID" to (config.getString(RuntimeConfig.ConfigKey.ManagedAppOAuthID) ?: "N/A"),
                     "Callback URL" to (config.getString(RuntimeConfig.ConfigKey.ManagedAppCallbackURL) ?: "N/A"),
