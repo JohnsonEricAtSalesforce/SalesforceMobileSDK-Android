@@ -209,7 +209,7 @@ class IDPAuthCodeHelperTest {
             OAuth2.getAuthorizationUrl(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(),
             )
-        } returns returnValue
+        } returns returnValue!!
     }
 
     // endregion Helpers

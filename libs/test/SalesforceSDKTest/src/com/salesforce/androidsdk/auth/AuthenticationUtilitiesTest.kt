@@ -88,7 +88,7 @@ class AuthenticationUtilitiesTest {
         testContext = InstrumentationRegistry.getInstrumentation().targetContext
 
         // Setup mock runtime config
-        every { mockRuntimeConfig.isManagedApp } returns false
+        every { mockRuntimeConfig.isManagedApp() } returns false
 
         // Setup mock user account manager
         every { mockUserAccountManager.authenticatedUsers } returns mutableListOf()
@@ -138,7 +138,7 @@ class AuthenticationUtilitiesTest {
         )
 
         coEvery { fetchUserIdentity.invoke(any()) } returns userIdentityWithManagedAppRequirement
-        every { mockRuntimeConfig.isManagedApp } returns false
+        every { mockRuntimeConfig.isManagedApp() } returns false
 
         // When
         callOnAuthFlowComplete()
@@ -366,7 +366,7 @@ class AuthenticationUtilitiesTest {
             }
         )
         coEvery { fetchUserIdentity.invoke(any()) } returns userIdentityWithManagedAppRequirement
-        every { mockRuntimeConfig.isManagedApp } returns false
+        every { mockRuntimeConfig.isManagedApp() } returns false
 
         // When - tokenMigration is true but managed app required
         callOnAuthFlowComplete(tokenMigration = true)

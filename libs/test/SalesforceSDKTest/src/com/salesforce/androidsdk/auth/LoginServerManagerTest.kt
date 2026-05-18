@@ -37,14 +37,14 @@ import androidx.test.platform.app.InstrumentationRegistry.getInstrumentation
 import com.salesforce.androidsdk.R.string.sf__auth_login_production
 import com.salesforce.androidsdk.R.string.sf__auth_login_sandbox
 import com.salesforce.androidsdk.config.LoginServerManager
-import com.salesforce.androidsdk.config.LoginServerManager.IS_CUSTOM
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.IS_CUSTOM
 import com.salesforce.androidsdk.config.LoginServerManager.LoginServer
-import com.salesforce.androidsdk.config.LoginServerManager.NUMBER_OF_ENTRIES
-import com.salesforce.androidsdk.config.LoginServerManager.RUNTIME_PREFS_FILE
-import com.salesforce.androidsdk.config.LoginServerManager.SERVER_NAME
-import com.salesforce.androidsdk.config.LoginServerManager.SERVER_SELECTION_FILE
-import com.salesforce.androidsdk.config.LoginServerManager.SERVER_URL
-import com.salesforce.androidsdk.config.LoginServerManager.SERVER_URL_FILE
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.NUMBER_OF_ENTRIES
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.RUNTIME_PREFS_FILE
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.SERVER_NAME
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.SERVER_SELECTION_FILE
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.SERVER_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.SERVER_URL_FILE
 import com.salesforce.androidsdk.config.RuntimeConfig
 import com.salesforce.androidsdk.config.RuntimeConfig.ConfigKey.AppServiceHostLabels
 import com.salesforce.androidsdk.config.RuntimeConfig.ConfigKey.AppServiceHosts
@@ -96,7 +96,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val servers = loginServerManager?.loginServersFromRuntimeConfig
+        val servers = loginServerManager?.getLoginServersFromRuntimeConfig()
 
         assertNull(servers)
     }
@@ -117,7 +117,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val servers = loginServerManager?.loginServers
+        val servers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 2, servers?.size)
         assertEquals("MDM 1", servers?.get(0)?.name)
@@ -148,7 +148,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val servers = loginServerManager?.loginServers
+        val servers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 2, servers?.size)
         assertEquals(servers?.get(0)?.url, servers?.get(0)?.name)
@@ -179,7 +179,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val servers = loginServerManager?.loginServers
+        val servers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 2, servers?.size)
         assertEquals(servers?.get(0)?.url, servers?.get(0)?.name)
@@ -210,7 +210,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        var loginServers = loginServerManager?.loginServers
+        var loginServers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 2, loginServers?.size)
         assertEquals("MDM 1", loginServers?.get(0)?.name)
@@ -230,7 +230,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        loginServers = loginServerManager?.loginServers
+        loginServers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 3, loginServers?.size)
         assertEquals("MDM 1", loginServers?.get(0)?.name)
@@ -264,7 +264,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        var loginServers = loginServerManager?.loginServers
+        var loginServers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 3, loginServers?.size)
         assertEquals("MDM 1", loginServers?.get(0)?.name)
@@ -287,7 +287,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        loginServers = loginServerManager?.loginServers
+        loginServers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 3, loginServers?.size)
         assertEquals("MDM 1", loginServers?.get(0)?.name)
@@ -321,7 +321,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        var loginServers = loginServerManager?.loginServers
+        var loginServers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 3, loginServers?.size)
         assertEquals("MDM 1", loginServers?.get(0)?.name)
@@ -344,7 +344,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        loginServers = loginServerManager?.loginServers
+        loginServers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 2, loginServers?.size)
         assertEquals("MDM 1", loginServers?.get(0)?.name)
@@ -376,7 +376,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers_nulls)
 
-        val loginServers = loginServerManager?.loginServers
+        val loginServers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 1, loginServers?.size)
         assertEquals("Example Login Server", loginServers?.get(0)?.name)
@@ -412,7 +412,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val selectedLoginServer = loginServerManager?.selectedLoginServer
+        val selectedLoginServer = loginServerManager?.getSelectedLoginServer()
 
         assertEquals("Default Login Server", selectedLoginServer?.name)
         assertEquals("https://default.example.com", selectedLoginServer?.url)
@@ -446,7 +446,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val selectedLoginServer = loginServerManager?.selectedLoginServer
+        val selectedLoginServer = loginServerManager?.getSelectedLoginServer()
 
         assertEquals("Default Login Server", selectedLoginServer?.name)
         assertEquals("https://default.example.com", selectedLoginServer?.url)
@@ -480,7 +480,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val selectedLoginServer = loginServerManager?.selectedLoginServer
+        val selectedLoginServer = loginServerManager?.getSelectedLoginServer()
 
         assertEquals("Default Login Server", selectedLoginServer?.name)
         assertEquals("https://default.example.com", selectedLoginServer?.url)
@@ -514,7 +514,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val selectedLoginServer = loginServerManager?.selectedLoginServer
+        val selectedLoginServer = loginServerManager?.getSelectedLoginServer()
 
         assertEquals("Default Login Server", selectedLoginServer?.name)
         assertEquals("https://default.example.com", selectedLoginServer?.url)
@@ -548,7 +548,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val selectedLoginServer = loginServerManager?.selectedLoginServer
+        val selectedLoginServer = loginServerManager?.getSelectedLoginServer()
 
         assertEquals("Default Login Server", selectedLoginServer?.name)
         assertEquals("https://selected.example.com", selectedLoginServer?.url)
@@ -582,7 +582,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val selectedLoginServer = loginServerManager?.selectedLoginServer
+        val selectedLoginServer = loginServerManager?.getSelectedLoginServer()
 
         assertEquals("Selected Login Server", selectedLoginServer?.name)
         assertEquals("https://default.example.com", selectedLoginServer?.url)
@@ -616,7 +616,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val selectedLoginServer = loginServerManager?.selectedLoginServer
+        val selectedLoginServer = loginServerManager?.getSelectedLoginServer()
 
         assertEquals("Production", selectedLoginServer?.name)
         assertEquals("https://login.salesforce.com", selectedLoginServer?.url)
@@ -657,7 +657,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        var loginServers = loginServerManager?.loginServers
+        var loginServers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 1, loginServers?.size)
 
@@ -704,7 +704,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        var loginServers = loginServerManager?.loginServers
+        var loginServers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 1, loginServers?.size)
 
@@ -740,7 +740,7 @@ class LoginServerManagerMockTest {
 
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
 
-        val loginServers = loginServerManager?.loginServers
+        val loginServers = loginServerManager?.getLoginServers()
         assertEquals("Wrong number of servers", 2, loginServers?.size)
     }
 
@@ -760,7 +760,7 @@ class LoginServerManagerMockTest {
         val loginServer = LoginServer("MDM 3", "https://mdm3.example.com/3", false)
         loginServerManager?.removeServer(loginServer)
 
-        val servers = loginServerManager?.loginServers
+        val servers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 2, servers?.size)
         assertEquals("MDM 1", servers?.get(0)?.name)
@@ -791,7 +791,7 @@ class LoginServerManagerMockTest {
         val loginServer = LoginServer("MDM 3", "https://mdm3.example.com/3", true)
         loginServerManager?.removeServer(loginServer)
 
-        val servers = loginServerManager?.loginServers
+        val servers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 2, servers?.size)
         assertEquals("MDM 1", servers?.get(0)?.name)
@@ -820,7 +820,7 @@ class LoginServerManagerMockTest {
         loginServerManager = LoginServerManager(context, runtimeConfig, servers)
         loginServerManager?.addCustomLoginServer("MDM 3", "https://mdm3.example.com/3")
 
-        var servers = loginServerManager?.loginServers
+        var servers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 3, servers?.size)
         assertEquals("MDM 3", servers?.get(2)?.name)
@@ -830,7 +830,7 @@ class LoginServerManagerMockTest {
         val loginServer = LoginServer("MDM 3", "https://mdm3.example.com/3", true)
         loginServerManager?.removeServer(loginServer, context.getSharedPreferences(RUNTIME_PREFS_FILE, MODE_PRIVATE), true)
 
-        servers = loginServerManager?.loginServers
+        servers = loginServerManager?.getLoginServers()
 
         assertEquals("Wrong number of servers", 2, servers?.size)
         assertEquals("MDM 1", servers?.get(0)?.name)

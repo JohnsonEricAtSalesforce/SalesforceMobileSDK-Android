@@ -11,7 +11,7 @@ import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.accounts.UserAccountTest
 import com.salesforce.androidsdk.app.SalesforceSDKManager
-import com.salesforce.androidsdk.auth.OAuth2.OAUTH_AUTH_PATH
+import com.salesforce.androidsdk.auth.OAuth2.Companion.OAUTH_AUTH_PATH
 import com.salesforce.androidsdk.rest.ClientManager
 import com.salesforce.androidsdk.rest.ClientManager.RestClientCallback
 import com.salesforce.androidsdk.rest.RestClient
@@ -93,7 +93,7 @@ class NativeLoginManagerTest {
         addUserAccount()
         Assert.assertTrue("Should show back button when there is a logged in user.", mgr.shouldShowBackButton)
 
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         Assert.assertTrue("Should show back if not locked.", mgr.shouldShowBackButton)
 
@@ -109,7 +109,7 @@ class NativeLoginManagerTest {
         addUserAccount()
         Assert.assertNull("Should not return username when bio auth is not enabled.", mgr.biometricAuthenticationUsername)
 
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         Assert.assertNull("Should not return username when not locked.", mgr.biometricAuthenticationUsername)
 
@@ -131,7 +131,7 @@ class NativeLoginManagerTest {
     fun testPresentBiometricAuthReturnsFalseWhenNotLocked() {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.biometricOptIn(true)
         // Not locked — should return false.
@@ -145,7 +145,7 @@ class NativeLoginManagerTest {
     fun testPresentBiometricAuthReturnsFalseWhenNotOptedIn() {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         // Opted out, but locked.
         bioAuthManager.lock()
@@ -196,7 +196,7 @@ class NativeLoginManagerTest {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager
                 as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.biometricOptIn(true)
         bioAuthManager.lock()
@@ -217,7 +217,7 @@ class NativeLoginManagerTest {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager
                 as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.biometricOptIn(true)
         bioAuthManager.lock()
@@ -240,7 +240,7 @@ class NativeLoginManagerTest {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager
                 as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.lock()
         Assert.assertTrue("Should be locked.", bioAuthManager.locked)
@@ -267,7 +267,7 @@ class NativeLoginManagerTest {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager
                 as BiometricAuthenticationManager
         addUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.lock()
 
@@ -293,7 +293,7 @@ class NativeLoginManagerTest {
     fun testBiometricAuthenticationUsernameWithNativeLoginUser() {
         bioAuthManager = SalesforceSDKManager.getInstance().biometricAuthenticationManager as BiometricAuthenticationManager
         addNativeLoginUserAccount()
-        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        val account = SalesforceSDKManager.getInstance().userAccountManager.currentUser!!
         bioAuthManager.storeMobilePolicy(account, enabled = true, timeout = 15)
         bioAuthManager.lock()
         assertEquals(
@@ -408,7 +408,7 @@ class NativeLoginManagerTest {
         verify(exactly = 1) {
             restClient.sendAsync(match {
                 val buffer = okio.Buffer()
-                it.requestBody.writeTo(buffer)
+                it.requestBody!!.writeTo(buffer)
                 val bodyString = buffer.readUtf8()
                 val pathMatches = it.path == "$TEST_LOGIN_URL$OAUTH_AUTH_PATH"
                 val attestationMatches = if (expectedAttestationValue != null) {

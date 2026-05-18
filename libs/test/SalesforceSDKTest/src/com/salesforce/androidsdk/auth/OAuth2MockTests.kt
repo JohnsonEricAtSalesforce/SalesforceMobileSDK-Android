@@ -2,11 +2,11 @@ package com.salesforce.androidsdk.auth
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.salesforce.androidsdk.app.SalesforceSDKManager
-import com.salesforce.androidsdk.auth.OAuth2.ATTESTATION
-import com.salesforce.androidsdk.auth.OAuth2.exchangeCode
-import com.salesforce.androidsdk.auth.OAuth2.getAuthorizationUrl
-import com.salesforce.androidsdk.auth.OAuth2.makeTokenEndpointRequest
-import com.salesforce.androidsdk.auth.OAuth2.swapJWTForTokens
+import com.salesforce.androidsdk.auth.OAuth2.Companion.ATTESTATION
+import com.salesforce.androidsdk.auth.OAuth2.Companion.exchangeCode
+import com.salesforce.androidsdk.auth.OAuth2.Companion.getAuthorizationUrl
+import com.salesforce.androidsdk.auth.OAuth2.Companion.makeTokenEndpointRequest
+import com.salesforce.androidsdk.auth.OAuth2.Companion.swapJWTForTokens
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot

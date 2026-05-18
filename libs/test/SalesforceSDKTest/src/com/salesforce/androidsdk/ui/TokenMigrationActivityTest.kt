@@ -40,7 +40,7 @@ import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.analytics.AnalyticsPublishingWorker
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger
 import com.salesforce.androidsdk.app.SalesforceSDKManager
-import com.salesforce.androidsdk.auth.OAuth2.FRONTDOOR_URL_KEY
+import com.salesforce.androidsdk.auth.OAuth2.Companion.FRONTDOOR_URL_KEY
 import com.salesforce.androidsdk.config.OAuthConfig
 import com.salesforce.androidsdk.rest.RestClient
 import io.mockk.every

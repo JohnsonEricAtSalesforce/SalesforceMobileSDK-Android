@@ -98,8 +98,8 @@ class ClientManagerMockTest {
             every { body } returns responseBody
         }
 
-        mockkObject(HttpAccess.DEFAULT)
-        every { HttpAccess.DEFAULT.okHttpClient } returns mockk<OkHttpClient> {
+        mockkObject(HttpAccess.DEFAULT!!)
+        every { HttpAccess.DEFAULT!!.okHttpClient } returns mockk<OkHttpClient> {
             every { newCall(any()) } returns mockk<Call> {
                 every { execute() } returns refreshResponse
             }
@@ -122,7 +122,7 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -160,7 +160,7 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -190,7 +190,7 @@ class ClientManagerMockTest {
     @Test
     fun testGetNewAuthToken_NoAccounts() {
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns emptyArray<Account>()
+            every { getAccounts() } returns emptyArray<Account>()
         }
         val authTokenProvider = ClientManager.AccMgrAuthTokenProvider(
             mockClientManager,
@@ -215,7 +215,7 @@ class ClientManagerMockTest {
             every { refreshToken } returns "not-matching"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -242,7 +242,7 @@ class ClientManagerMockTest {
             every { refreshToken } returns "not-matching"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -278,7 +278,7 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount, mockAccount2)
+            every { getAccounts() } returns arrayOf(mockAccount, mockAccount2)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -307,7 +307,7 @@ class ClientManagerMockTest {
 
     @Test
     fun testGetNewAuthToken_Revoked() {
-        every { HttpAccess.DEFAULT.okHttpClient } returns mockk<OkHttpClient> {
+        every { HttpAccess.DEFAULT!!.okHttpClient } returns mockk<OkHttpClient> {
             every { newCall(any()) } returns mockk<Call> {
                 every { execute() } returns mockk<Response>(relaxed = true) {
                     every { isSuccessful } returns false
@@ -324,7 +324,7 @@ class ClientManagerMockTest {
 
         // Use the real clientManager instead of a full mock because revokedTokenShouldLogout is private.
         val clientManagerSpy = spyk(clientManager)
-        every { clientManagerSpy.accounts } returns arrayOf(mockAccount)
+        every { clientManagerSpy.getAccounts() } returns arrayOf(mockAccount)
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
         every { mockUserAccountManager.updateAccount(mockAccount, any()) } returns mockk()
@@ -370,7 +370,7 @@ class ClientManagerMockTest {
             every { close() } just runs
             every { body } returns responseBody
         }
-        every { HttpAccess.DEFAULT.okHttpClient } returns mockk<OkHttpClient> {
+        every { HttpAccess.DEFAULT!!.okHttpClient } returns mockk<OkHttpClient> {
             every { newCall(any()) } returns mockk<Call> {
                 every { execute() } returns rotatedResponse
             }
@@ -384,7 +384,7 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
@@ -407,7 +407,7 @@ class ClientManagerMockTest {
         Assert.assertEquals(ROTATED_REFRESH_TOKEN, userSlot.captured.refreshTokenForPersistence)
         // ...and so should the provider's in-memory cache, so that subsequent
         // refreshes (and getRefreshToken consumers) use the rotated token.
-        Assert.assertEquals(ROTATED_REFRESH_TOKEN, authTokenProvider.refreshToken)
+        Assert.assertEquals(ROTATED_REFRESH_TOKEN, run { val f = authTokenProvider.javaClass.getDeclaredField("refreshToken"); f.isAccessible = true; f.get(authTokenProvider) as String? })
     }
 
     /*
@@ -442,7 +442,7 @@ class ClientManagerMockTest {
         }
 
         // Return a different rotated refresh token on each refresh.
-        every { HttpAccess.DEFAULT.okHttpClient } returns mockk<OkHttpClient> {
+        every { HttpAccess.DEFAULT!!.okHttpClient } returns mockk<OkHttpClient> {
             every { newCall(any()) } returnsMany listOf(
                 mockk<Call> { every { execute() } returns rotationResponse(firstRotated) },
                 mockk<Call> { every { execute() } returns rotationResponse(secondRotated) },
@@ -459,12 +459,12 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount)
+            every { getAccounts() } returns arrayOf(mockAccount)
         }
         every { mockUserAccountManager.currentUser } returns mockUser
         every { mockUserAccountManager.buildUserAccount(mockAccount) } returns mockUser
         every { mockUserAccountManager.updateAccount(mockAccount, any()) } answers {
-            persistedRefreshToken = secondArg<UserAccount>().refreshToken
+            persistedRefreshToken = secondArg<UserAccount>().refreshToken!!
             mockk()
         }
 
@@ -477,12 +477,12 @@ class ClientManagerMockTest {
 
         // First refresh succeeds, rotates to firstRotated.
         Assert.assertEquals(REFRESHED_ACCESS_TOKEN, authTokenProvider.getNewAuthToken())
-        Assert.assertEquals(firstRotated, authTokenProvider.refreshToken)
+        Assert.assertEquals(firstRotated, run { val f = authTokenProvider.javaClass.getDeclaredField("refreshToken"); f.isAccessible = true; f.get(authTokenProvider) as String? })
         Assert.assertEquals(firstRotated, persistedRefreshToken)
 
         // Second refresh, ensure each rotation is stored.
         Assert.assertEquals(REFRESHED_ACCESS_TOKEN, authTokenProvider.getNewAuthToken())
-        Assert.assertEquals(secondRotated, authTokenProvider.refreshToken)
+        Assert.assertEquals(secondRotated, run { val f = authTokenProvider.javaClass.getDeclaredField("refreshToken"); f.isAccessible = true; f.get(authTokenProvider) as String? })
         verify(exactly = 0) {
             mockSDKManager.logout(any(), any(), any(), any())
         }
@@ -510,7 +510,7 @@ class ClientManagerMockTest {
             every { loginServer } returns "https://login.salesforce.com"
         }
         val mockClientManager = mockk<ClientManager>(relaxed = true) {
-            every { accounts } returns arrayOf(mockAccount, mockAccount2)
+            every { getAccounts() } returns arrayOf(mockAccount, mockAccount2)
         }
         // The account that we are not refreshing for is the current account.
         every { mockUserAccountManager.currentUser } returns mockUser2
@@ -546,7 +546,7 @@ class ClientManagerMockTest {
      */
     @Test
     fun testGetNewAuthToken_Multiuser_RevokeNonCurrentUser() {
-        every { HttpAccess.DEFAULT.okHttpClient } returns mockk<OkHttpClient> {
+        every { HttpAccess.DEFAULT!!.okHttpClient } returns mockk<OkHttpClient> {
             every { newCall(any()) } returns mockk<Call> {
                 every { execute() } returns mockk<Response>(relaxed = true) {
                     every { isSuccessful } returns false
@@ -576,7 +576,7 @@ class ClientManagerMockTest {
         every { mockUserAccountManager.updateAccount(mockAccount2, any()) } returns mockk()
         // Use the real clientManager instead of a full mock because revokedTokenShouldLogout is private.
         val clientManagerSpy = spyk(clientManager)
-        every { clientManagerSpy.accounts } returns arrayOf(mockAccount, mockAccount2)
+        every { clientManagerSpy.getAccounts() } returns arrayOf(mockAccount, mockAccount2)
         val authTokenProvider = ClientManager.AccMgrAuthTokenProvider(
             clientManagerSpy,
             "https://login.salesforce.com",

@@ -8,9 +8,9 @@ import androidx.test.filters.SmallTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.accounts.UserAccountManager
-import com.salesforce.androidsdk.accounts.UserAccountManagerTest.cleanupAccounts
-import com.salesforce.androidsdk.accounts.UserAccountManagerTest.createTestAccountInAccountManager
-import com.salesforce.androidsdk.accounts.UserAccountTest.createTestAccount
+import com.salesforce.androidsdk.accounts.UserAccountManagerTest.Companion.cleanupAccounts
+import com.salesforce.androidsdk.accounts.UserAccountManagerTest.Companion.createTestAccountInAccountManager
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.createTestAccount
 import com.salesforce.androidsdk.app.PushMessagingTest.Companion.NOTIFICATIONS_TYPES_JSON
 import com.salesforce.androidsdk.push.PushMessaging
 import com.salesforce.androidsdk.push.PushMessaging.clearNotificationsTypes
@@ -77,11 +77,11 @@ class PushServiceTest {
         val userAccountManager = UserAccountManager.getInstance().apply { this@PushServiceTest.userAccountManager = this }
 
         VERSION_NUMBER_TEST = null
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
         clearNotificationsTypes(user)
-        cleanupAccounts(accountManager)
+        cleanupAccounts(accountManager!!)
 
-        assertNull("There should be no authenticated users.", userAccountManager.getAuthenticatedUsers())
+        assertNull("There should be no authenticated users.", userAccountManager.authenticatedUsers)
     }
 
     @After
@@ -89,7 +89,7 @@ class PushServiceTest {
     fun tearDown() {
 
         VERSION_NUMBER_TEST = null
-        cleanupAccounts(accountManager)
+        cleanupAccounts(accountManager!!)
 
         userAccountManager = null
         accountManager = null
@@ -167,7 +167,7 @@ class PushServiceTest {
 
         // Mocks
         val restResponse = mockk<RestResponse>()
-        every { restResponse.asString() } returns null
+        every { restResponse.asString() } returns ""
         every { restResponse.isSuccess } returns true
         val restClient = mockk<RestClient>()
         every { restClient.clientInfo } returns clientInfo
@@ -328,7 +328,7 @@ class PushServiceTest {
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup.
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // TODO: This requires more mocks for result testing. ECJ20250416
         PushService().onRegistered(
@@ -441,7 +441,7 @@ class PushServiceTest {
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup.
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         var statusActual: Int? = null
         object : PushService() {
@@ -477,7 +477,7 @@ class PushServiceTest {
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup.
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // TODO: This requires more mocks for result testing. ECJ20250416
         object : PushService() {
@@ -497,7 +497,7 @@ class PushServiceTest {
     @Test
     fun testPerformRegistrationChange_RegisterWithoutRegistrationId() {
 
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // TODO: This requires more mocks for result testing. ECJ20250416
         PushService().performRegistrationChange(
@@ -514,7 +514,7 @@ class PushServiceTest {
         val restClient = mockk<RestClient>()
 
         // Setup.
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         PushMessaging.setRegistrationId(
             context = salesforceSdkManager.appContext,
@@ -534,7 +534,7 @@ class PushServiceTest {
     fun testPerformRegistrationChange_DeRegister() {
         val salesforceSdkManager = SalesforceSDKManager.getInstance()
 
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         PushMessaging.setRegistrationId(
             context = salesforceSdkManager.appContext,
@@ -612,7 +612,7 @@ class PushServiceTest {
 
         // Setup.
         VERSION_NUMBER_TEST = "v64.0"
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         PushService().refreshNotificationsTypes(
             status = REGISTRATION_STATUS_SUCCEEDED,
@@ -682,7 +682,7 @@ class PushServiceTest {
 
         // Setup.
         val notificationsTypesResponseBody = fromJson(NOTIFICATIONS_TYPES_JSON)
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // Run first time to test initial creation of notification channels.
         PushService().removeNotificationsCategories()
@@ -712,7 +712,7 @@ class PushServiceTest {
         // Setup.
         val notificationsTypesResponseBody = fromJson(NOTIFICATIONS_TYPES_JSON)
         val originalNotificationTypes = notificationsTypesResponseBody.notificationTypes
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // Test when no notification types are in the data.
         PushService().removeNotificationsCategories()
@@ -735,7 +735,7 @@ class PushServiceTest {
 
     @Test
     fun testRegisterSFDCPushNotification() {
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // Mocks.
         val restResponse = mockk<RestResponse>()
@@ -775,7 +775,7 @@ class PushServiceTest {
                 assertEquals(
                     "test_community_id",
                     runCatching {
-                        it.requestBodyAsJson.get("NetworkId")
+                        it.requestBodyAsJson!!.get("NetworkId")
                     }.getOrDefault("Default Value")
                 )
             })
@@ -787,7 +787,7 @@ class PushServiceTest {
 
     @Test
     fun testRegisterSFDCPushNotification_UnknownHttpStatus() {
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // Mocks.
         val restResponse = mockk<RestResponse>()
@@ -826,7 +826,7 @@ class PushServiceTest {
 
     @Test
     fun testRegisterSFDCPushNotification_Failure() {
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // Mocks.
         val restResponse = mockk<RestResponse>()
@@ -865,7 +865,7 @@ class PushServiceTest {
 
     @Test
     fun testRegisterSFDCPushNotification_NullResponseBody() {
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // Mocks.
         val restResponse = mockk<RestResponse>()
@@ -878,7 +878,7 @@ class PushServiceTest {
         every { restResponse.consume() } returns Unit
         every { restResponse.isSuccess } returns true
         every { restResponse.statusCode } returns HTTP_CREATED
-        every { restResponse.asJSONObject() } returns null
+        every { restResponse.asJSONObject() } returns JSONObject()
         val restClient = mockk<RestClient>()
         every { restClient.sendSync(any()) } returns restResponse
 
@@ -904,7 +904,7 @@ class PushServiceTest {
 
     @Test
     fun testRegisterSFDCPushNotification_Exception() {
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         // Mocks.
         val restResponse = mockk<RestResponse>()
@@ -917,7 +917,7 @@ class PushServiceTest {
         every { restResponse.consume() } throws Exception()
         every { restResponse.isSuccess } returns true
         every { restResponse.statusCode } returns HTTP_CREATED
-        every { restResponse.asJSONObject() } returns null
+        every { restResponse.asJSONObject() } returns JSONObject()
         val restClient = mockk<RestClient>()
         every { restClient.sendSync(any()) } returns restResponse
 

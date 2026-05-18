@@ -134,10 +134,10 @@ class SalesforceSDKUpgradeManagerTest {
         Assert.assertEquals(SalesforceSDKManager.SDK_VERSION, getVersion())
 
         // Make sure legacy settings have been cleared
-        Assert.assertTrue(legacySettingsMgr.getPrefs(user11).isEmpty())
-        Assert.assertTrue(legacySettingsMgr.getPrefs(user12).isEmpty())
-        Assert.assertTrue(legacySettingsMgr.getPrefs(user21).isEmpty())
-        Assert.assertTrue(legacySettingsMgr.getPrefs(user31).isEmpty())
+        Assert.assertTrue(legacySettingsMgr.getPrefs(user11)!!.isEmpty())
+        Assert.assertTrue(legacySettingsMgr.getPrefs(user12)!!.isEmpty())
+        Assert.assertTrue(legacySettingsMgr.getPrefs(user21)!!.isEmpty())
+        Assert.assertTrue(legacySettingsMgr.getPrefs(user31)!!.isEmpty())
 
         // Make sure user level custom attributes include (legacy) org level custom attributes
         Assert.assertEquals(
@@ -204,11 +204,15 @@ class SalesforceSDKUpgradeManagerTest {
     }
 
     fun setVersion(version: String) {
-        upgradeMgr.writeCurVersion(ACC_MGR_KEY, version)
+        val method = upgradeMgr.javaClass.getDeclaredMethod("writeCurVersion", String::class.java, String::class.java)
+        method.isAccessible = true
+        method.invoke(upgradeMgr, ACC_MGR_KEY, version)
     }
 
     fun getVersion(): String {
-        return upgradeMgr.getInstalledVersion(ACC_MGR_KEY)
+        val method = upgradeMgr.javaClass.getDeclaredMethod("getInstalledVersion", String::class.java)
+        method.isAccessible = true
+        return method.invoke(upgradeMgr, ACC_MGR_KEY) as String
     }
 
     fun buildUser(orgId: String, userId: String): UserAccount {
@@ -238,7 +242,7 @@ class SalesforceSDKUpgradeManagerTest {
 
         // Create upgrade manager and upgrade
         val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
-        upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
+        run { val m = upgradeManager.javaClass.getDeclaredMethod("writeCurVersion", String::class.java, String::class.java); m.isAccessible = true; m.invoke(upgradeManager, ACC_MGR_KEY, "14.0.0") }
         upgradeManager.upgrade()
 
         // Verify that no account operations were attempted (early return)
@@ -289,7 +293,7 @@ class SalesforceSDKUpgradeManagerTest {
 
         // Create upgrade manager and trigger migration
         val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
-        upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
+        run { val m = upgradeManager.javaClass.getDeclaredMethod("writeCurVersion", String::class.java, String::class.java); m.isAccessible = true; m.invoke(upgradeManager, ACC_MGR_KEY, "14.0.0") }
         upgradeManager.upgrade()
 
         // Verify all accounts were processed
@@ -323,7 +327,7 @@ class SalesforceSDKUpgradeManagerTest {
 
         // Create upgrade manager and trigger migration
         val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
-        upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
+        run { val m = upgradeManager.javaClass.getDeclaredMethod("writeCurVersion", String::class.java, String::class.java); m.isAccessible = true; m.invoke(upgradeManager, ACC_MGR_KEY, "14.0.0") }
         upgradeManager.upgrade()
 
         // Verify no account operations were performed
@@ -367,7 +371,7 @@ class SalesforceSDKUpgradeManagerTest {
 
         // Create upgrade manager and trigger migration
         val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
-        upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
+        run { val m = upgradeManager.javaClass.getDeclaredMethod("writeCurVersion", String::class.java, String::class.java); m.isAccessible = true; m.invoke(upgradeManager, ACC_MGR_KEY, "14.0.0") }
         upgradeManager.upgrade()
 
         // Verify account was not removed or recreated when buildUserAccount returns null, but other accounts still succeed.
@@ -421,7 +425,7 @@ class SalesforceSDKUpgradeManagerTest {
 
         // Create upgrade manager and trigger migration
         val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
-        upgradeManager.writeCurVersion(ACC_MGR_KEY, "14.0.0")
+        run { val m = upgradeManager.javaClass.getDeclaredMethod("writeCurVersion", String::class.java, String::class.java); m.isAccessible = true; m.invoke(upgradeManager, ACC_MGR_KEY, "14.0.0") }
         upgradeManager.upgrade()
 
         // Verify second account was still processed despite first account failing
@@ -445,7 +449,7 @@ class SalesforceSDKUpgradeManagerTest {
 
         // Create upgrade manager and set version to 15.0.0 (no upgrade needed)
         val upgradeManager = SalesforceSDKUpgradeManager(userMgr)
-        upgradeManager.writeCurVersion(ACC_MGR_KEY, "15.0.0")
+        run { val m = upgradeManager.javaClass.getDeclaredMethod("writeCurVersion", String::class.java, String::class.java); m.isAccessible = true; m.invoke(upgradeManager, ACC_MGR_KEY, "15.0.0") }
         upgradeManager.upgrade()
 
         verify(exactly = 0) { mockSDKManager.accountType }

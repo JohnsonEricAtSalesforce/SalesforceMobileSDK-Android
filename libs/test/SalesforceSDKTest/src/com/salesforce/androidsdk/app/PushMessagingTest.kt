@@ -7,8 +7,8 @@ import androidx.test.filters.SmallTest
 import androidx.test.platform.app.InstrumentationRegistry
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.accounts.UserAccountManager
-import com.salesforce.androidsdk.accounts.UserAccountManagerTest.cleanupAccounts
-import com.salesforce.androidsdk.accounts.UserAccountManagerTest.createTestAccountInAccountManager
+import com.salesforce.androidsdk.accounts.UserAccountManagerTest.Companion.cleanupAccounts
+import com.salesforce.androidsdk.accounts.UserAccountManagerTest.Companion.createTestAccountInAccountManager
 import com.salesforce.androidsdk.push.PushMessaging.clearNotificationsTypes
 import com.salesforce.androidsdk.push.PushMessaging.getNotificationsTypes
 import com.salesforce.androidsdk.push.PushMessaging.setNotificationTypes
@@ -59,18 +59,18 @@ class PushMessagingTest {
         val userAccountManager = UserAccountManager.getInstance().apply { this@PushMessagingTest.userAccountManager = this }
 
         ApiVersionStrings.VERSION_NUMBER_TEST = null
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
         clearNotificationsTypes(user)
-        cleanupAccounts(accountManager)
+        cleanupAccounts(accountManager!!)
 
-        assertNull("There should be no authenticated users.", userAccountManager?.getAuthenticatedUsers())
+        assertNull("There should be no authenticated users.", userAccountManager?.authenticatedUsers)
     }
 
     @After
     @Throws(Exception::class)
     fun tearDown() {
 
-        cleanupAccounts(accountManager)
+        cleanupAccounts(accountManager!!)
         ApiVersionStrings.VERSION_NUMBER_TEST = null
 
         userAccountManager = null
@@ -104,11 +104,11 @@ class PushMessagingTest {
     fun testGetNotificationsTypesViaSdkManager() {
         val salesforceSdkManager = SalesforceSDKManager.getInstance()
 
-        createTestAccountInAccountManager(userAccountManager)
-        clearNotificationsTypes(salesforceSdkManager.userAccountManager.currentUser)
+        createTestAccountInAccountManager(userAccountManager!!)
+        clearNotificationsTypes(salesforceSdkManager.userAccountManager.currentUser!!)
 
         setNotificationTypes(
-            userAccount = salesforceSdkManager.userAccountManager.currentUser,
+            userAccount = salesforceSdkManager.userAccountManager.currentUser!!,
             notificationsTypes = fromJson(NOTIFICATIONS_TYPES_JSON)
         )
 
@@ -134,8 +134,8 @@ class PushMessagingTest {
     fun testGetNotificationsTypesViaSdkManager_WithoutNotificationsTypesResponseBody() {
         val salesforceSdkManager = SalesforceSDKManager.getInstance()
 
-        createTestAccountInAccountManager(userAccountManager)
-        clearNotificationsTypes(salesforceSdkManager.userAccountManager.currentUser)
+        createTestAccountInAccountManager(userAccountManager!!)
+        clearNotificationsTypes(salesforceSdkManager.userAccountManager.currentUser!!)
 
         val notificationsType = salesforceSdkManager.getNotificationsType(
             "actionable_notif_test_type"
@@ -148,11 +148,11 @@ class PushMessagingTest {
     fun testGetNotificationsTypesViaSdkManager_WithoutNotificationsTypes() {
         val salesforceSdkManager = SalesforceSDKManager.getInstance()
 
-        createTestAccountInAccountManager(userAccountManager)
-        clearNotificationsTypes(salesforceSdkManager.userAccountManager.currentUser)
+        createTestAccountInAccountManager(userAccountManager!!)
+        clearNotificationsTypes(salesforceSdkManager.userAccountManager.currentUser!!)
 
         setNotificationTypes(
-            userAccount = salesforceSdkManager.userAccountManager.currentUser,
+            userAccount = salesforceSdkManager.userAccountManager.currentUser!!,
             notificationsTypes = fromJson(NOTIFICATIONS_TYPES_JSON).copy(notificationTypes = null)
         )
 
@@ -168,11 +168,11 @@ class PushMessagingTest {
     fun testGetNotificationsTypesViaSdkManager_WithEmptyNotificationsTypes() {
         val salesforceSdkManager = SalesforceSDKManager.getInstance()
 
-        createTestAccountInAccountManager(userAccountManager)
-        clearNotificationsTypes(salesforceSdkManager.userAccountManager.currentUser)
+        createTestAccountInAccountManager(userAccountManager!!)
+        clearNotificationsTypes(salesforceSdkManager.userAccountManager.currentUser!!)
 
         setNotificationTypes(
-            userAccount = salesforceSdkManager.userAccountManager.currentUser,
+            userAccount = salesforceSdkManager.userAccountManager.currentUser!!,
             notificationsTypes = fromJson(NOTIFICATIONS_TYPES_JSON).copy(notificationTypes = arrayOf())
         )
 
@@ -201,10 +201,10 @@ class PushMessagingTest {
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         setNotificationTypes(
-            userAccount = salesforceSdkManager.userAccountManager.currentUser,
+            userAccount = salesforceSdkManager.userAccountManager.currentUser!!,
             notificationsTypes = fromJson(NOTIFICATIONS_TYPES_JSON)
         )
 
@@ -252,7 +252,7 @@ class PushMessagingTest {
         val restClient = mockk<RestClient>()
         every { restClient.sendSync(any()) } returns restResponse
 
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         setNotificationTypes(
             userAccount = user,
@@ -277,10 +277,10 @@ class PushMessagingTest {
         // Mocks.
         val restClient = mockk<RestClient>()
         every { restClient.clientInfo } returns clientInfo
-        every { restClient.sendSync(any()) } returns null
+        every { restClient.sendSync(any()) } returns mockk(relaxed = true)
 
         // Setup.
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         setNotificationTypes(
             userAccount = user,
@@ -302,14 +302,14 @@ class PushMessagingTest {
 
         // Mocks.
         val restResponse = mockk<RestResponse>()
-        every { restResponse.asString() } returns null
+        every { restResponse.asString() } returns ""
         every { restResponse.isSuccess } returns true
         val restClient = mockk<RestClient>()
         every { restClient.clientInfo } returns clientInfo
         every { restClient.sendSync(any()) } returns restResponse
 
         // Setup.
-        createTestAccountInAccountManager(userAccountManager)
+        createTestAccountInAccountManager(userAccountManager!!)
 
         setNotificationTypes(
             userAccount = user,

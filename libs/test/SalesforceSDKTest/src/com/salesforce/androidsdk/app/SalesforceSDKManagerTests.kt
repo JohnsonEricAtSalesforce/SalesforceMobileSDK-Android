@@ -7,8 +7,8 @@ import androidx.test.platform.app.InstrumentationRegistry.getInstrumentation
 import com.salesforce.androidsdk.auth.HttpAccess
 import com.salesforce.androidsdk.config.LoginServerManager
 import com.salesforce.androidsdk.config.LoginServerManager.LoginServer
-import com.salesforce.androidsdk.config.LoginServerManager.PRODUCTION_LOGIN_URL
-import com.salesforce.androidsdk.config.LoginServerManager.WELCOME_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.PRODUCTION_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.WELCOME_LOGIN_URL
 import com.salesforce.androidsdk.ui.LoginActivity
 import io.mockk.every
 import io.mockk.just
@@ -88,7 +88,7 @@ class SalesforceSDKManagerTests {
         }
 
         httpAccess = mockk<HttpAccess>().apply {
-            every { getOkHttpClient() } returns this@SalesforceSDKManagerTests.okHttpClient
+            every { okHttpClient } returns this@SalesforceSDKManagerTests.okHttpClient
         }
     }
 
@@ -247,7 +247,7 @@ class SalesforceSDKManagerTests {
 
         // Mocks
         val httpAccessThrows = mockk<HttpAccess>()
-        every { httpAccessThrows.getOkHttpClient() } throws (NullPointerException("Test Exception"))
+        every { httpAccessThrows.okHttpClient } throws (NullPointerException("Test Exception"))
 
         runBlocking {
             SalesforceSDKManager.getInstance().fetchAuthenticationConfiguration(
@@ -503,7 +503,7 @@ class SalesforceSDKManagerTests {
             // Create a mock that doesn't use SharedPreferences
             mockk<LoginServerManager>(relaxed = true).apply {
                 // Return the test login server when asked
-                every { selectedLoginServer } returns (testLoginServer ?: LoginServer(
+                every { getSelectedLoginServer() } returns (testLoginServer ?: LoginServer(
                     "Test",
                     "https://test.example.com",
                     false

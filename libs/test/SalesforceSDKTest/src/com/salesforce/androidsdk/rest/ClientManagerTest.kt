@@ -1,0 +1,413 @@
+/*
+ * Copyright (c) 2011-present, salesforce.com, inc.
+ * All rights reserved.
+ * Redistribution and use of this software in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
+ * - Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ * - Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * - Neither the name of salesforce.com, inc. nor the names of its contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission of salesforce.com, inc.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+package com.salesforce.androidsdk.rest
+
+import android.accounts.Account
+import android.accounts.AccountManager
+import android.app.Instrumentation
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.filters.MediumTest
+import androidx.test.platform.app.InstrumentationRegistry
+import com.salesforce.androidsdk.TestForceApp
+import com.salesforce.androidsdk.accounts.UserAccount
+import com.salesforce.androidsdk.accounts.UserAccountManager
+import com.salesforce.androidsdk.accounts.UserAccountManagerTest.Companion.TEST_ACCOUNT_TYPE
+import com.salesforce.androidsdk.accounts.UserAccountTest
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_ACCOUNT_NAME
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_ACCOUNT_NAME_2
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_AUTH_TOKEN
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_CUSTOM_KEY
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_CUSTOM_VALUE
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_INSTANCE_URL
+import com.salesforce.androidsdk.app.SalesforceSDKManager
+import com.salesforce.androidsdk.rest.ClientManager.AccountInfoNotFoundException
+import com.salesforce.androidsdk.rest.ClientManager.RestClientCallback
+import com.salesforce.androidsdk.util.EventsObservable.EventType
+import com.salesforce.androidsdk.util.test.EventsListenerQueue
+import com.salesforce.androidsdk.util.test.TestCredentials
+import io.mockk.mockk
+import org.junit.After
+import org.junit.Assert
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.net.URI
+import java.util.Arrays
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.TimeUnit
+
+@RunWith(AndroidJUnit4::class)
+@MediumTest
+class ClientManagerTest {
+
+    private lateinit var clientManager: ClientManager
+    private lateinit var accountManager: AccountManager
+    private lateinit var userAccountManager: UserAccountManager
+    private lateinit var eq: EventsListenerQueue
+    private var testOauthKeys: MutableList<String>? = null
+    private var testOauthValues: MutableMap<String, String>? = null
+
+    @Before
+    fun setUp() {
+        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val app = Instrumentation.newApplication(TestForceApp::class.java, targetContext)
+        InstrumentationRegistry.getInstrumentation().callApplicationOnCreate(app)
+        TestCredentials.init(InstrumentationRegistry.getInstrumentation().context)
+        clientManager = ClientManager(targetContext, TEST_ACCOUNT_TYPE, true)
+        accountManager = clientManager.accountManager
+        eq = EventsListenerQueue()
+        if (!SalesforceSDKManager.hasInstance()) {
+            eq.waitForEvent(EventType.AppCreateComplete, 5000)
+        }
+        userAccountManager = SalesforceSDKManager.getInstance().userAccountManager
+        testOauthKeys = ArrayList()
+        testOauthKeys!!.add(TEST_CUSTOM_KEY)
+        testOauthValues = HashMap()
+        testOauthValues!![TEST_CUSTOM_KEY] = TEST_CUSTOM_VALUE
+        SalesforceSDKManager.getInstance().additionalOauthKeys = testOauthKeys
+    }
+
+    @After
+    fun tearDown() {
+        eq.tearDown()
+        cleanupAccounts()
+        assertNoAccounts()
+        testOauthKeys = null
+        testOauthValues = null
+        SalesforceSDKManager.getInstance().additionalOauthKeys = testOauthKeys
+    }
+
+    /**
+     * Test getAccountType
+     */
+    @Test
+    fun testGetAccountType() {
+        Assert.assertEquals("Wrong account type", TEST_ACCOUNT_TYPE, clientManager.getAccountType())
+    }
+
+    /**
+     * Test createNewAccount
+     */
+    @Test
+    fun testCreateAccount() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Call createNewAccount
+        createTestAccountInAccountManager()
+
+        // Check that the account did get created
+        val accounts = clientManager.getAccounts()
+        Assert.assertEquals("One account should have been returned", 1, accounts.size)
+        Assert.assertEquals("Wrong account name", TEST_ACCOUNT_NAME, accounts[0].name)
+        Assert.assertEquals("Wrong account type", TEST_ACCOUNT_TYPE, accounts[0].type)
+    }
+
+    /**
+     * Test getAccount
+     */
+    @Test
+    fun testGetAccount() {
+        val userAccount = UserAccountTest.createTestAccount()
+
+        // Save to account manager (encrypt fields)
+        clientManager.createNewAccount(userAccount)
+
+        // Get account from account manager
+        val account = clientManager.getAccount()
+
+        // Build user account from account (decrypts fields)
+        val restoredUserAccount = userAccountManager.buildUserAccount(account)
+
+        // Make sure all the fields made it through and back
+        UserAccountTest.checkSameUserAccount(userAccount, restoredUserAccount!!)
+    }
+
+    /**
+     * Test getAccounts - when there is only one
+     */
+    @Test
+    fun testGetAccountsWithSingleAccount() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Call createNewAccount
+        createTestAccountInAccountManager()
+
+        // Call getAccounts
+        val accounts = clientManager.getAccounts()
+        Assert.assertEquals("One account should have been returned", 1, accounts.size)
+        Assert.assertEquals("Wrong account name", TEST_ACCOUNT_NAME, accounts[0].name)
+        Assert.assertEquals("Wrong account type", TEST_ACCOUNT_TYPE, accounts[0].type)
+    }
+
+    /**
+     * Test getAccounts - when there are several accounts
+     */
+    @Test
+    fun testGetAccountsWithSeveralAccounts() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Call two accounts
+        createTestAccountInAccountManager()
+        createOtherTestAccountInAccountManager()
+
+        // Call getAccounts
+        val accounts = clientManager.getAccounts()
+        Assert.assertEquals("Two accounts should have been returned", 2, accounts.size)
+
+        // Sorting
+        Arrays.sort(accounts) { account1, account2 -> account1.name.compareTo(account2.name) }
+
+        Assert.assertEquals("Wrong account name", TEST_ACCOUNT_NAME, accounts[0].name)
+        Assert.assertEquals("Wrong account name", TEST_ACCOUNT_NAME_2, accounts[1].name)
+    }
+
+    /**
+     * Test getAccountByName
+     */
+    @Test
+    fun testGetAccountByName() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Create two accounts
+        createTestAccountInAccountManager()
+        createOtherTestAccountInAccountManager()
+
+        // Check that the accounts did get created
+        val accounts = clientManager.getAccounts()
+        Assert.assertEquals("Two accounts should have been returned", 2, accounts.size)
+
+        // Get the first one by name
+        var account = clientManager.getAccountByName(TEST_ACCOUNT_NAME)
+        Assert.assertNotNull("An account should have been returned", account)
+        Assert.assertEquals("Wrong account name", TEST_ACCOUNT_NAME, account!!.name)
+        Assert.assertEquals("Wrong account type", TEST_ACCOUNT_TYPE, account!!.type)
+
+        // Get the second one by name
+        account = clientManager.getAccountByName(TEST_ACCOUNT_NAME_2)
+        Assert.assertNotNull("An account should have been returned", account)
+        Assert.assertEquals("Wrong account name", TEST_ACCOUNT_NAME_2, account!!.name)
+        Assert.assertEquals("Wrong account type", TEST_ACCOUNT_TYPE, account!!.type)
+    }
+
+    /**
+     * Test removeAccounts when there is only one
+     */
+    @Test
+    fun testRemoveOnlyAccount() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Create an account
+        createTestAccountInAccountManager()
+
+        // Check that the account did get created
+        val accounts = clientManager.getAccounts()
+        Assert.assertEquals("One account should have been returned", 1, accounts.size)
+        Assert.assertEquals("Wrong account name", TEST_ACCOUNT_NAME, accounts[0].name)
+
+        // Remove the account
+        clientManager.removeAccounts(accounts)
+
+        // Make sure there are no accounts left
+        assertNoAccounts()
+    }
+
+    /**
+     * Test removeAccounts - removing one account where there are several
+     */
+    @Test
+    fun testRemoveOneOfSeveralAccounts() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Create two accounts
+        createTestAccountInAccountManager()
+        createOtherTestAccountInAccountManager()
+
+        // Check that the accounts did get created
+        val accounts = clientManager.getAccounts()
+        Assert.assertEquals("Two accounts should have been returned", 2, accounts.size)
+
+        // Remove one of them
+        clientManager.removeAccounts(arrayOf(accounts[0]))
+
+        // Make sure the other account is still there
+        val accountsLeft = clientManager.getAccounts()
+        Assert.assertEquals("One account should have been returned", 1, accountsLeft.size)
+        Assert.assertEquals("Wrong account name", accounts[1].name, accountsLeft[0].name)
+    }
+
+    /**
+     * Test removeAccounts - removing two accounts
+     */
+    @Test
+    fun testRemoveSeveralAccounts() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Create two accounts
+        createTestAccountInAccountManager()
+        createOtherTestAccountInAccountManager()
+
+        // Check that the accounts did get created
+        val accounts = clientManager.getAccounts()
+        Assert.assertEquals("Two accounts should have been returned", 2, accounts.size)
+
+        // Remove one of them
+        clientManager.removeAccounts(accounts)
+
+        // Make sure there are no accounts left
+        assertNoAccounts()
+    }
+
+    /**
+     * Test peekRestClient - when there is no account
+     */
+    @Test
+    fun testPeekRestClientWhenNoAccounts() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Call peekRestClient - expect exception
+        try {
+            clientManager.peekRestClient()
+            Assert.fail("Expected AccountInfoNotFoundException")
+        } catch (e: AccountInfoNotFoundException) {
+            // as expected
+        }
+    }
+
+    /**
+     * Test peekRestClient - when there is an account
+     */
+    @Test
+    fun testPeekRestClientWithAccountSetup() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Create account
+        createTestAccountInAccountManager()
+
+        // Call peekRestClient - expect restClient
+        try {
+            val restClient = clientManager.peekRestClient()
+            Assert.assertNotNull("RestClient expected", restClient)
+            Assert.assertEquals("Wrong authToken", TEST_AUTH_TOKEN, restClient.authToken)
+            Assert.assertEquals("Wrong instance Url", URI(TEST_INSTANCE_URL), restClient.clientInfo.instanceUrl)
+        } catch (e: AccountInfoNotFoundException) {
+            Assert.fail("Did not expect AccountInfoNotFoundException")
+        }
+    }
+
+    /**
+     * Test getRestClient - when there is an account
+     */
+    @Test
+    fun testGetRestClientWithAccountSetup() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Create account
+        createTestAccountInAccountManager()
+
+        // Call getRestClient - expect restClient
+        val q = ArrayBlockingQueue<RestClient>(1)
+        clientManager.getRestClient(mockk(relaxed = true), RestClientCallback { client ->
+            if (client != null) {
+                q.add(client)
+            }
+        })
+
+        // Wait for getRestClient to complete
+        try {
+            val restClient = q.poll(10L, TimeUnit.SECONDS)
+            Assert.assertNotNull("RestClient expected", restClient)
+            Assert.assertEquals("Wrong authToken", TEST_AUTH_TOKEN, restClient.authToken)
+            Assert.assertEquals("Wrong instance Url", URI(TEST_INSTANCE_URL), restClient.clientInfo.instanceUrl)
+        } catch (e: InterruptedException) {
+            Assert.fail("getRestClient did not return after 5s")
+        }
+    }
+
+    /**
+     * Test removeAccount
+     */
+    @Test
+    fun testRemoveAccount() {
+        // Make sure we have no accounts initially
+        assertNoAccounts()
+
+        // Create account
+        createTestAccountInAccountManager()
+
+        // Check that the accounts did get created
+        val accounts = clientManager.getAccounts()
+        Assert.assertEquals("Two accounts should have been returned", 1, accounts.size)
+
+        // Call removeAccount
+        clientManager.removeAccount(clientManager.getAccount())
+
+        // Make sure there are no accounts left
+        assertNoAccounts()
+    }
+
+    /**
+     * Checks there are no test accounts
+     */
+    private fun assertNoAccounts() {
+        Assert.assertEquals("There should be no accounts", 0, accountManager.getAccountsByType(TEST_ACCOUNT_TYPE).size)
+    }
+
+    /**
+     * Remove any existing accounts
+     */
+    private fun cleanupAccounts() {
+        clientManager.removeAccounts(accountManager.getAccountsByType(TEST_ACCOUNT_TYPE))
+    }
+
+    /**
+     * Create test account
+     */
+    private fun createTestAccountInAccountManager(): UserAccount {
+        val userAccount = UserAccountTest.createTestAccount()
+        clientManager.createNewAccount(userAccount)
+        return userAccount
+    }
+
+    /**
+     * Create other test account
+     */
+    private fun createOtherTestAccountInAccountManager(): UserAccount {
+        val userAccount = UserAccountTest.createOtherTestAccount()
+        clientManager.createNewAccount(userAccount)
+        return userAccount
+    }
+}

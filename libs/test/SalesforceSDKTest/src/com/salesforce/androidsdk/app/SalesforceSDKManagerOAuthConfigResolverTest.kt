@@ -33,7 +33,7 @@ import androidx.test.filters.SmallTest
 import androidx.test.platform.app.InstrumentationRegistry.getInstrumentation
 import com.salesforce.androidsdk.MainActivity
 import com.salesforce.androidsdk.config.BootConfig
-import com.salesforce.androidsdk.config.BootConfig.getBootConfig
+import com.salesforce.androidsdk.config.BootConfig.Companion.getBootConfig
 import com.salesforce.androidsdk.config.OAuthConfig
 import com.salesforce.androidsdk.ui.LoginActivity
 import kotlinx.coroutines.runBlocking

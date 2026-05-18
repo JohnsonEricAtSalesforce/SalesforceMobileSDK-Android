@@ -117,7 +117,7 @@ class BiometricAuthenticationManagerTest {
 
     @Test
     fun testCleanUp() {
-        val storedUser = SalesforceSDKManager.getInstance().userAccountManager.authenticatedUsers[0]
+        val storedUser = SalesforceSDKManager.getInstance().userAccountManager.authenticatedUsers!![0]
         val storedUserPrefs = ctx.getSharedPreferences((BIO_AUTH_POLICY + storedUser.userLevelFilenameSuffix), Context.MODE_PRIVATE)
         bioAuthManager.storeMobilePolicy(storedUser, true, 60)
         bioAuthManager.cleanUp(storedUser)

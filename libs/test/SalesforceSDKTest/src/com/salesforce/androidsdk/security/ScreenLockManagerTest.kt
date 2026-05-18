@@ -32,25 +32,25 @@ import androidx.test.filters.SmallTest
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.accounts.UserAccountManager
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_ACCOUNT_NAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_AUTH_TOKEN
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_COMMUNITY_ID
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_COMMUNITY_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_DISPLAY_NAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_EMAIL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_FIRST_NAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_IDENTITY_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_INSTANCE_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_LANGUAGE
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_LAST_NAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_LOCALE
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_LOGIN_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_ORG_ID
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_PHOTO_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_REFRESH_TOKEN
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_THUMBNAIL_URL
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_USERNAME
-import com.salesforce.androidsdk.accounts.UserAccountTest.TEST_USER_ID
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_ACCOUNT_NAME
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_AUTH_TOKEN
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_COMMUNITY_ID
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_COMMUNITY_URL
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_DISPLAY_NAME
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_EMAIL
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_FIRST_NAME
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_IDENTITY_URL
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_INSTANCE_URL
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_LANGUAGE
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_LAST_NAME
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_LOCALE
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_LOGIN_URL
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_ORG_ID
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_PHOTO_URL
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_REFRESH_TOKEN
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_THUMBNAIL_URL
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_USERNAME
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_USER_ID
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.security.ScreenLockManager.Companion.MOBILE_POLICY_PREF
 import com.salesforce.androidsdk.security.ScreenLockManager.Companion.SCREEN_LOCK
@@ -184,7 +184,7 @@ class ScreenLockManagerTest {
     @Test
     fun testCleanUp() {
         UserAccountManager.getInstance().createAccount(userAccount);
-        val storedUser = SalesforceSDKManager.getInstance().userAccountManager.authenticatedUsers[0]
+        val storedUser = SalesforceSDKManager.getInstance().userAccountManager.authenticatedUsers!![0]
         val storedUserPrefs = ctx.getSharedPreferences(
             (MOBILE_POLICY_PREF
                     + storedUser.userLevelFilenameSuffix), Context.MODE_PRIVATE

@@ -37,8 +37,8 @@ import androidx.test.core.app.ApplicationProvider.getApplicationContext
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.salesforce.androidsdk.app.Features
 import com.salesforce.androidsdk.app.SalesforceSDKManager
-import com.salesforce.androidsdk.config.LoginServerManager.PRODUCTION_LOGIN_URL
-import com.salesforce.androidsdk.config.LoginServerManager.WELCOME_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.PRODUCTION_LOGIN_URL
+import com.salesforce.androidsdk.config.LoginServerManager.Companion.WELCOME_LOGIN_URL
 import com.salesforce.androidsdk.ui.LoginActivity.Companion.EXTRA_KEY_LOGIN_HINT
 import com.salesforce.androidsdk.ui.LoginActivity.Companion.EXTRA_KEY_LOGIN_HOST
 import org.junit.Assert.assertEquals
@@ -68,7 +68,7 @@ class LoginActivityScenarioTest {
             activityScenario.onActivity { activity ->
 
                 val actualLoginHint = activity.viewModel.loginHint
-                val actualLoginServerHostname = SalesforceSDKManager.getInstance().loginServerManager.selectedLoginServer
+                val actualLoginServerHostname = SalesforceSDKManager.getInstance().loginServerManager.getSelectedLoginServer()!!
 
                 assertEquals(expectedLoginHint, actualLoginHint)
                 assertEquals(expectedLoginServerHostname, parse(actualLoginServerHostname.url).host)

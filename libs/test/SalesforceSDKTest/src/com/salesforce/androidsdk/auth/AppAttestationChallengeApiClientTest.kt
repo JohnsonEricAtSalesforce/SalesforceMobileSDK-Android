@@ -100,7 +100,7 @@ class AppAttestationChallengeApiClientTest {
         success: Boolean,
     ): AppAttestationChallengeApiClient {
         val restResponse = mockk<RestResponse>(relaxed = true).apply {
-            every { asString() } returns body
+            every { asString() } returns (body ?: "")
             every { isSuccess } returns success
         }
         val restClient = mockk<RestClient>(relaxed = true).apply {
