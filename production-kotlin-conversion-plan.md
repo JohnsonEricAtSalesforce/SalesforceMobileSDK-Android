@@ -946,8 +946,8 @@ Other sample apps (AuthFlowTester) are already Kotlin.
 
 | Batch | Files | Lines | Status |
 |-------|-------|-------|--------|
-| 35 | `ExplorerActivity.java` (857 — RestExplorer) | ~857 | [ ] |
-| 36 | AppConfigurator: `AppConfiguratorAdminReceiver.java` (64), `AppConfiguratorState.java` (182), `ConfigureAppFragment.java` (186), `EnableProfileActivity.java` (62), `MainActivity.java` (71), `SetupProfileFragment.java` (115); ConfiguredApp: `ConfiguredApp.java` (52), `MainActivity.java` (103) | ~835 | [ ] |
+| 35 | `ExplorerActivity.java` (857 — RestExplorer) | ~857 | [✓] |
+| 36 | AppConfigurator: `AppConfiguratorAdminReceiver.java` (64), `AppConfiguratorState.java` (182), `ConfigureAppFragment.java` (186), `EnableProfileActivity.java` (62), `MainActivity.java` (71), `SetupProfileFragment.java` (115); ConfiguredApp: `ConfiguredApp.java` (52), `MainActivity.java` (103) | ~835 | [✓] |
 
 **App boundary after batch 36:**
 - Build RestExplorer: `./gradlew :native:NativeSampleApps:RestExplorer:assembleDebug`

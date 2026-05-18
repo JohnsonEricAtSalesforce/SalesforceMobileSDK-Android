@@ -39,7 +39,7 @@ import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.INFO
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.OFF
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.VERBOSE
 import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Level.WARN
-import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.setLogReceiverFactory
+import com.salesforce.androidsdk.analytics.logger.SalesforceLogger.Companion.setLogReceiverFactory
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager.Companion.getInstance
 import com.salesforce.androidsdk.ui.LoginActivity
