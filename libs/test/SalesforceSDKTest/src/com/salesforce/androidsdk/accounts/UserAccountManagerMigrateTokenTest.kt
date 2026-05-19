@@ -77,7 +77,7 @@ class UserAccountManagerMigrateTokenTest {
         mockkObject(SalesforceSDKManager)
         every { SalesforceSDKManager.getInstance() } returns mockSdkManager
         every { mockSdkManager.appContext } returns mockContext
-        mockkStatic(SalesforceSDKLogger::class)
+        mockkObject(SalesforceSDKLogger)
         every { SalesforceSDKLogger.e(any(), any()) } just runs
         every { SalesforceSDKLogger.e(any(), any(), any()) } just runs
         every { SalesforceSDKLogger.i(any(), any()) } just runs
