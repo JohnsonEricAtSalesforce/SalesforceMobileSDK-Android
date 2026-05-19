@@ -232,13 +232,14 @@ open class DBHelper private constructor() {
      */
     fun limitRawQuery(db: SQLiteDatabase, sql: String, limit: String, vararg whereArgs: String?): Cursor {
         val limitSql = String.format(LIMIT_SELECT, sql, limit)
+        val args = whereArgs.filterNotNull().toTypedArray().ifEmpty { null }
         if (captureExplainQueryPlan) {
-            runExplainQueryPlan(db, limitSql, *whereArgs)
+            runExplainQueryPlan(db, limitSql, args)
         }
-        return db.rawQuery(limitSql, whereArgs as Array<String?>?)
+        return db.rawQuery(limitSql, args)
     }
 
-    private fun runExplainQueryPlan(db: SQLiteDatabase, sql: String, vararg whereArgs: String?) {
+    private fun runExplainQueryPlan(db: SQLiteDatabase, sql: String, whereArgs: Array<String>?) {
         val lastExplain = JSONObject()
         var c: Cursor? = null
         try {
@@ -246,7 +247,7 @@ open class DBHelper private constructor() {
             if (whereArgs != null && whereArgs.isNotEmpty()) lastExplain.put(EXPLAIN_ARGS, JSONArray(whereArgs.toList()))
             val rows = JSONArray()
 
-            c = db.rawQuery("EXPLAIN QUERY PLAN $sql", whereArgs as Array<String?>?)
+            c = db.rawQuery("EXPLAIN QUERY PLAN $sql", whereArgs)
             while (c.moveToNext()) {
                 val row = JSONObject()
                 for (i in 0 until c.columnCount) {
@@ -277,10 +278,9 @@ open class DBHelper private constructor() {
             prog = db.compileStatement(countSql)
             rawCountSqlToStatementsMap.put(countSql, prog)
         }
-        if (whereArgs != null) {
-            for (i in whereArgs.indices) {
-                prog.bindString(i + 1, whereArgs[i]!!)
-            }
+        val args = whereArgs.filterNotNull()
+        for (i in args.indices) {
+            prog.bindString(i + 1, args[i])
         }
         return try {
             val count = prog.simpleQueryForLong().toInt()
