@@ -376,14 +376,14 @@ class KeyValueEncryptedFileStoreTest {
         Assert.assertFalse("Save should have returned false for \"\" key", keyValueStore.saveValue("", "value"))
         Assert.assertNull("Value found for key when not expected", keyValueStore.getValue(""))
         Assert.assertEquals("Wrong count for store", 0, keyValueStore.count())
-        Assert.assertFalse("Save should have returned false for null key", keyValueStore.saveValue(null as String, "value"))
-        Assert.assertNull("Value found for key when not expected", keyValueStore.getValue(null as String))
+        Assert.assertFalse("Save should have returned false for null key", keyValueStore.saveValue(null, "value"))
+        Assert.assertNull("Value found for key when not expected", keyValueStore.getValue(null))
         Assert.assertEquals("Wrong count for store", 0, keyValueStore.count())
     }
 
     @Test
     fun testSaveValueInvalidValue() {
-        Assert.assertFalse("Save should have returned false for null value", keyValueStore.saveValue("key", null as String))
+        Assert.assertFalse("Save should have returned false for null value", keyValueStore.saveValue("key", null))
         Assert.assertNull("Value found for key when not expected", keyValueStore.getValue("key"))
         Assert.assertEquals("Wrong count for store", 0, keyValueStore.count())
     }

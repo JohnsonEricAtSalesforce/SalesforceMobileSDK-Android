@@ -49,7 +49,7 @@ class MemCachedKeyValueStore(
         return memCache.get(key) != null || keyValueStore.contains(key)
     }
 
-    override fun getValue(key: String): String? {
+    override fun getValue(key: String?): String? {
         val stream = getStream(key) ?: return null
         return try {
             Encryptor.getStringFromStream(stream)
@@ -59,7 +59,8 @@ class MemCachedKeyValueStore(
         }
     }
 
-    override fun getStream(key: String): InputStream? {
+    override fun getStream(key: String?): InputStream? {
+        if (key == null) return null
         val bytesFromMemCache = memCache.get(key)
         if (bytesFromMemCache == null) {
             val streamFromStore = keyValueStore.getStream(key) ?: return null
@@ -76,9 +77,9 @@ class MemCachedKeyValueStore(
         }
     }
 
-    override fun saveValue(key: String, value: String): Boolean {
+    override fun saveValue(key: String?, value: String?): Boolean {
         return if (keyValueStore.saveValue(key, value)) {
-            memCache.put(key, value.toByteArray(StandardCharsets.UTF_8))
+            if (key != null && value != null) memCache.put(key, value.toByteArray(StandardCharsets.UTF_8))
             true
         } else {
             false

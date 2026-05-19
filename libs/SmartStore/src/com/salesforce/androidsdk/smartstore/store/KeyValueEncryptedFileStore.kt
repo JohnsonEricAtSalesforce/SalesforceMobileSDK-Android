@@ -107,13 +107,18 @@ open class KeyValueEncryptedFileStore : KeyValueStore {
      * @param value Value to be persisted.
      * @return True - if successful, False - otherwise.
      */
-    override fun saveValue(key: String, value: String): Boolean {
+    override fun saveValue(key: String?, value: String?): Boolean {
         if (!isKeyValid(key, "saveValue")) {
             return false
         }
+        if (value == null) {
+            SmartStoreLogger.w(TAG, "saveValue: Invalid value supplied: null")
+            return false
+        }
+        val validKey = key ?: return false
         return try {
-            if (kvVersion >= 2) encryptStringToFile(getKeyFile(key), key, encryptionKey)
-            encryptStringToFile(getValueFile(key), value, encryptionKey)
+            if (kvVersion >= 2) encryptStringToFile(getKeyFile(validKey), validKey, encryptionKey)
+            encryptStringToFile(getValueFile(validKey), value, encryptionKey)
             true
         } catch (e: Exception) {
             SmartStoreLogger.e(TAG, "Exception occurred while saving value to filesystem", e)
@@ -149,11 +154,12 @@ open class KeyValueEncryptedFileStore : KeyValueStore {
      * @param key Unique identifier.
      * @return value for given key or null if key not found.
      */
-    override fun getValue(key: String): String? {
+    override fun getValue(key: String?): String? {
         if (!isKeyValid(key, "getValue")) {
             return null
         }
-        val file = getValueFile(key)
+        val validKey = key ?: return null
+        val file = getValueFile(validKey)
         if (!file.exists()) {
             SmartStoreLogger.w(TAG, "getValue: File does not exist for key: $key")
             return null
@@ -172,11 +178,12 @@ open class KeyValueEncryptedFileStore : KeyValueStore {
      * @param key Unique identifier.
      * @return stream to value for given key or null if key not found.
      */
-    override fun getStream(key: String): InputStream? {
+    override fun getStream(key: String?): InputStream? {
         if (!isKeyValid(key, "getStream")) {
             return null
         }
-        val file = getValueFile(key)
+        val validKey = key ?: return null
+        val file = getValueFile(validKey)
         if (!file.exists()) {
             SmartStoreLogger.w(TAG, "getStream: File does not exist for key: $key")
             return null
@@ -336,8 +343,8 @@ open class KeyValueEncryptedFileStore : KeyValueStore {
         return File(storeDir, VERSION_FILE_NAME)
     }
 
-    private fun isKeyValid(key: String, operation: String): Boolean {
-        if (TextUtils.isEmpty(key)) {
+    private fun isKeyValid(key: String?, operation: String): Boolean {
+        if (key == null || TextUtils.isEmpty(key)) {
             SmartStoreLogger.w(TAG, "$operation: Invalid key supplied: $key")
             return false
         }

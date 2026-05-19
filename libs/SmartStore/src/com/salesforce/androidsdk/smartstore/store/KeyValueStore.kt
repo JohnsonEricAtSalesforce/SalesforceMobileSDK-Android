@@ -33,11 +33,11 @@ interface KeyValueStore {
 
     fun contains(key: String): Boolean
 
-    fun getValue(key: String): String?
+    fun getValue(key: String?): String?
 
-    fun getStream(key: String): InputStream?
+    fun getStream(key: String?): InputStream?
 
-    fun saveValue(key: String, value: String): Boolean
+    fun saveValue(key: String?, value: String?): Boolean
 
     @Throws(IOException::class)
     fun saveStream(key: String, stream: InputStream): Boolean
