@@ -145,9 +145,9 @@ class QuerySpec private constructor(
         private const val WHERE = "WHERE "
         private const val ORDER_BY = "ORDER BY "
 
-        private const val SELECT_COUNT = SELECT + "count(*) "
+        private const val SELECT_COUNT = SELECT + "count(*)"
         private const val SELECT_COUNT_FROM = "$SELECT_COUNT FROM (%s)"
-        private val SELECT_ID = SELECT + SmartStore.ID_COL + " "
+        private val SELECT_ID = SELECT + SmartStore.ID_COL
         private val SELECT_ID_FROM = "$SELECT_ID FROM (%s)"
 
         // Keys in json
@@ -328,7 +328,7 @@ class QuerySpec private constructor(
         ): String {
             val fromClause = computeFromClauseStatic(soupName)
             val whereClause = computeWhereClauseStatic(soupName, queryType, matchKey, path)
-            return SELECT_COUNT + fromClause + whereClause
+            return "$SELECT_COUNT $fromClause$whereClause"
         }
 
         private fun computeIdsSmartSqlStatic(
@@ -339,7 +339,7 @@ class QuerySpec private constructor(
             val fromClause = computeFromClauseStatic(soupName)
             val whereClause = computeWhereClauseStatic(soupName, queryType, matchKey, path)
             val orderClause = computeOrderClauseStatic(soupName, orderPath, order)
-            return SELECT_ID + fromClause + whereClause + orderClause
+            return "$SELECT_ID $fromClause$whereClause$orderClause"
         }
 
         private fun computeSelectClauseStatic(soupName: String, selectPaths: Array<String>?): String {
