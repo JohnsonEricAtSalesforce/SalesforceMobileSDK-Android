@@ -575,7 +575,9 @@ open class SmartStore(protected var dbOpenHelper: SQLiteOpenHelper) {
      */
     @Throws(JSONException::class)
     fun query(querySpec: QuerySpec, pageIndex: Int): JSONArray {
-        return queryWithArgs(querySpec, pageIndex, null)
+        val resultAsArray = JSONArray()
+        runQuery(resultAsArray, null, querySpec, pageIndex)
+        return resultAsArray
     }
 
     /**
@@ -611,7 +613,7 @@ open class SmartStore(protected var dbOpenHelper: SQLiteOpenHelper) {
      */
     fun queryAsString(resultBuilder: StringBuilder, querySpec: QuerySpec, pageIndex: Int) {
         try {
-            runQuery(null, resultBuilder, querySpec, pageIndex, null)
+            runQuery(null, resultBuilder, querySpec, pageIndex)
         } catch (e: JSONException) {
             // shouldn't happen since we call runQuery with a string builder
             throw SmartStoreException("Unexpected json exception", e)
@@ -936,7 +938,7 @@ open class SmartStore(protected var dbOpenHelper: SQLiteOpenHelper) {
             try {
                 cursor = DBHelper.getInstance(db).query(
                     db, soupTableName, arrayOf(SOUP_COL), null, null,
-                    getSoupEntryIdsPredicate(soupEntryIds.toTypedArray()), null
+                    getSoupEntryIdsPredicate(soupEntryIds.toTypedArray())
                 )
                 if (!cursor.moveToFirst()) {
                     return result

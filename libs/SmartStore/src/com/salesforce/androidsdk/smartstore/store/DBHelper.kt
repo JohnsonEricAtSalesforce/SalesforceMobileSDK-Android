@@ -315,7 +315,8 @@ open class DBHelper private constructor() {
      * @return
      */
     fun query(db: SQLiteDatabase, table: String, columns: Array<String>, orderBy: String?, limit: String?, whereClause: String?, vararg whereArgs: String?): Cursor {
-        return db.query(table, columns, whereClause, whereArgs as Array<String?>?, null, null, orderBy, limit)
+        val args = if (whereArgs.isEmpty()) null else whereArgs as Array<String?>?
+        return db.query(table, columns, whereClause, args, null, null, orderBy, limit)
     }
 
     /**
