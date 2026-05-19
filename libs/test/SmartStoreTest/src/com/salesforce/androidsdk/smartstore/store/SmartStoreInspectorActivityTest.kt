@@ -26,6 +26,7 @@
  */
 package com.salesforce.androidsdk.smartstore.store
 
+import android.Manifest
 import android.content.Context
 import android.widget.MultiAutoCompleteTextView
 import android.widget.TextView
@@ -39,6 +40,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.platform.app.InstrumentationRegistry.getInstrumentation
+import androidx.test.rule.GrantPermissionRule
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObjectNotFoundException
 import androidx.test.uiautomator.UiSelector
@@ -51,6 +53,7 @@ import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.CountDownLatch
@@ -61,6 +64,8 @@ import java.util.concurrent.CountDownLatch
 @RunWith(AndroidJUnit4::class)
 @MediumTest
 class SmartStoreInspectorActivityTest {
+    @get:Rule
+    val permissionRule: GrantPermissionRule = GrantPermissionRule.grant(Manifest.permission.POST_NOTIFICATIONS)
 
     companion object {
         private const val TEST_SOUP = "test_soup"
