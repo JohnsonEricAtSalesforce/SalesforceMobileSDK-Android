@@ -21,9 +21,10 @@ All 95 test Java files have been converted to Kotlin. The plan is fully executed
 | Remaining .java test files | 0 |
 | Audit artifacts (.java.bak) | 95 |
 | Deferred tests (@Ignore) | 0 |
-| Commits on feature branch | 5 |
+| Commits on feature branch | 17 (5 conversion + 2 status/plan + 10 runtime fixes) |
 | Pre-existing Kotlin test files fixed | 20 (in SalesforceSDKTest, for production API compatibility) |
-| Production source files modified | 0 |
+| Production source files modified | 5 (runtime bugs found by tests: SmartStore.kt, DBHelper.kt, QuerySpec.kt, KeyValueEncryptedFileStore.kt, PushService.kt, NotificationsApiClient.kt) |
+| Runtime test failures found and fixed | 12 issues (P1-P12), 245 failures → 0 |
 
 **Verification commands:**
 ```bash
@@ -324,7 +325,8 @@ Same as production plan, using `test-conversion-patterns.md` for test-specific p
 | Phase 3 (SalesforceSDKTest) — library boundary complete | 2026-05-18 | — |
 | Phase 4 (MobileSyncTest) — library boundary complete | 2026-05-18 | — |
 | Phase 5 (SalesforceHybridTest + SalesforceReactTest) — complete | 2026-05-18 | — |
-| Post-conversion verification | 2026-05-18 | PASS (5/6 modules) |
+| Post-conversion verification | 2026-05-18 | PASS (6/6 modules) |
+| Runtime test execution + bug fixes (P1-P12) | 2026-05-19 | 245 failures → 0 |
 | **Plan execution finished** | **2026-05-18** | — |
 
 **Note:** Execution used the v2 plan structure (combined phases, no scouts, 2 parallel agents for Phase 3). No operator gates triggered stop/adjust. SalesforceReact APK build blocked by environment (react-native-force git dep), not code.

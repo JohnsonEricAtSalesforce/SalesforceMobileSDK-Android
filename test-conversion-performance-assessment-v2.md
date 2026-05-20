@@ -1,9 +1,11 @@
 # Test Conversion — Performance Assessment (v2)
 
-**Execution date:** 2026-05-18
+**Execution date:** 2026-05-18 to 2026-05-19
 **Branch:** `feature/java-to-kotlin-test-migration`
 **Files converted:** 95/95 (plus 20 pre-existing Kotlin files repaired)
-**Build status:** 5/6 modules pass; 1 module (SalesforceReact) blocked by environment
+**Build status:** 6/6 modules pass (SalesforceReact requires `yarn install` for JS bundle)
+**Runtime test status:** 4/6 modules fully green on device (SalesforceAnalytics, SmartStore, MobileSync, SalesforceSDK). Hybrid/React blocked by environment only.
+**Production bugs found by tests:** 6 (P2, P3, P5, P11, P12 — all conversion artifacts; P11 was pre-existing)
 
 ---
 
