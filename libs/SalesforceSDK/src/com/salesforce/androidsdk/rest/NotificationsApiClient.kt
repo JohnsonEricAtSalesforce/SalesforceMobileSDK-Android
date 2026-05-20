@@ -73,9 +73,20 @@ class NotificationsApiClient(
         val responseBodyString = restResponse.asString()
 
         return if (restResponse.isSuccess && responseBodyString != null) {
-            NotificationsTypesResponseBody.fromJson(responseBodyString)
+            try {
+                NotificationsTypesResponseBody.fromJson(responseBodyString)
+            } catch (e: Exception) {
+                throw NotificationsApiException(
+                    message = "Failed to parse notifications types response.",
+                    source = responseBodyString
+                )
+            }
         } else {
-            val errorResponseBody = responseBodyString?.let { NotificationsApiErrorResponseBody.fromJson(responseBodyString) }
+            val errorResponseBody = try {
+                responseBodyString?.let { NotificationsApiErrorResponseBody.fromJson(responseBodyString) }
+            } catch (e: Exception) {
+                null
+            }
             throw NotificationsApiException(
                 errorCode = errorResponseBody?.firstOrNull()?.errorCode,
                 message = errorResponseBody?.firstOrNull()?.message ?: "No error response body was provided by the API endpoint.",
@@ -113,9 +124,20 @@ class NotificationsApiClient(
         val responseBodyString = restResponse?.asString()
 
         return if (restResponse?.isSuccess == true && responseBodyString != null) {
-            NotificationsActionsResponseBody.fromJson(responseBodyString)
+            try {
+                NotificationsActionsResponseBody.fromJson(responseBodyString)
+            } catch (e: Exception) {
+                throw NotificationsApiException(
+                    message = "Failed to parse notification action response.",
+                    source = responseBodyString
+                )
+            }
         } else {
-            val errorResponseBody = responseBodyString?.let { NotificationsApiErrorResponseBody.fromJson(responseBodyString) }
+            val errorResponseBody = try {
+                responseBodyString?.let { NotificationsApiErrorResponseBody.fromJson(responseBodyString) }
+            } catch (e: Exception) {
+                null
+            }
             throw NotificationsApiException(
                 errorCode = errorResponseBody?.firstOrNull()?.errorCode,
                 message = errorResponseBody?.firstOrNull()?.message ?: "No error response body was provided by the API endpoint.",
