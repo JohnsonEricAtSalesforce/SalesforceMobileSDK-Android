@@ -89,6 +89,7 @@ class UserAccountManagerTest {
     fun setUp() {
         val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
         accMgr = AccountManager.get(targetContext)
+        cleanupAccounts(accMgr)
         userAccMgr = UserAccountManager.getInstance()
         Assert.assertNull("There should be no authenticated users", userAccMgr.authenticatedUsers)
         logoutCompleteReceiver = FakeLogoutCompleteReceiver()
@@ -101,7 +102,9 @@ class UserAccountManagerTest {
     @After
     fun tearDown() {
         val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
-        targetContext.unregisterReceiver(logoutCompleteReceiver)
+        if (::logoutCompleteReceiver.isInitialized) {
+            targetContext.unregisterReceiver(logoutCompleteReceiver)
+        }
         cleanupAccounts(accMgr)
     }
 
