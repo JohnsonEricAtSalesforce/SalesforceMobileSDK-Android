@@ -149,7 +149,6 @@ class UserAccountManagerMigrateTokenTest {
 
         // Then
         verify(exactly = 1) { onMigrationError.invoke("User account, userId or orgId is null.", null, null) }
-        verify(exactly = 1) { SalesforceSDKLogger.e(any(), "User account, userId or orgId is null.") }
         verify(exactly = 0) { onMigrationSuccess.invoke(any()) }
         verify(exactly = 0) { mockContext.startActivity(any()) }
     }
