@@ -480,7 +480,7 @@ open class PushService {
                     SalesforceSDKManager.getInstance().appContext
                 ),
                 MOBILE_PUSH_SERVICE_DEVICE,
-                registeredId!!
+                registeredId ?: ""
             )
         )
     }
