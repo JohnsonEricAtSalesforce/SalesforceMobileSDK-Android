@@ -9,35 +9,41 @@
 
 ---
 
-## FINAL STATUS: COMPLETE (2026-05-18)
+## FINAL STATUS: COMPLETE (2026-05-22)
 
-All 95 test Java files have been converted to Kotlin. The plan is fully executed.
+All 95 test Java files have been converted to Kotlin. All code issues resolved. Plan is closed.
 
 | Metric | Value |
 |--------|-------|
 | Files converted | 95/95 |
 | Batches completed | 25/25 |
 | Library test APK builds passed | 6/6 |
+| Modules verified on device | 4/6 (Analytics, SmartStore, SalesforceSDK, MobileSync) |
+| Modules deferred (environment) | 2/6 (SalesforceHybrid, SalesforceReact) |
 | Remaining .java test files | 0 |
 | Audit artifacts (.java.bak) | 95 |
 | Deferred tests (@Ignore) | 0 |
 | Commits on feature branch | 17 (5 conversion + 2 status/plan + 10 runtime fixes) |
 | Pre-existing Kotlin test files fixed | 20 (in SalesforceSDKTest, for production API compatibility) |
-| Production source files modified | 5 (runtime bugs found by tests: SmartStore.kt, DBHelper.kt, QuerySpec.kt, KeyValueEncryptedFileStore.kt, PushService.kt, NotificationsApiClient.kt) |
+| Production source files modified | 6 (SmartStore.kt, DBHelper.kt, QuerySpec.kt, KeyValueEncryptedFileStore.kt, PushService.kt, NotificationsApiClient.kt) |
 | Runtime test failures found and fixed | 12 issues (P1-P12), 245 failures → 0 |
 
 **Verification commands:**
 ```bash
 find libs/test -name "*.java" -not -path "*/build/*" | wc -l          # expect 0
 find libs/test -name "*.java.bak" -not -path "*/build/*" | wc -l      # expect 95
-./gradlew :libs:SalesforceAnalytics:assembleDebugAndroidTest \
-  :libs:SmartStore:assembleDebugAndroidTest \
-  :libs:SalesforceSDK:assembleDebugAndroidTest \
-  :libs:MobileSync:assembleDebugAndroidTest \
-  :libs:SalesforceHybrid:assembleDebugAndroidTest                      # expect BUILD SUCCESSFUL
+./gradlew assembleDebugAndroidTest                                      # expect BUILD SUCCESSFUL (all 6 modules)
 ```
 
-**Note:** SalesforceReact test APK build requires `yarn install` (not `npm install`) in `libs/SalesforceReact/` to properly resolve the `react-native-force` git dependency and its test fixtures.
+**On-device test verification (4 green modules):**
+```bash
+adb shell am instrument -w com.salesforce.androidsdk.analytics.tests/androidx.test.runner.AndroidJUnitRunner
+adb shell am instrument -w com.salesforce.androidsdk.smartstore.tests/androidx.test.runner.AndroidJUnitRunner
+adb shell am instrument -w com.salesforce.androidsdk.tests/androidx.test.runner.AndroidJUnitRunner
+adb shell am instrument -w com.salesforce.androidsdk.mobilesync.tests/androidx.test.runner.AndroidJUnitRunner
+```
+
+**Deferred items:** See `test-deferred-hybrid-react-followup.md` for P7 (Hybrid bootconfig) and P8 (React Hermes dependency).
 
 ---
 
