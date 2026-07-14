@@ -14,14 +14,17 @@ import com.salesforce.androidsdk.push.PushMessaging.getNotificationsTypes
 import com.salesforce.androidsdk.push.PushMessaging.setNotificationTypes
 import com.salesforce.androidsdk.rest.ApiVersionStrings
 import com.salesforce.androidsdk.rest.NotificationsActionsResponseBody
+import com.salesforce.androidsdk.rest.NotificationsApiClient
 import com.salesforce.androidsdk.rest.NotificationsApiErrorResponseBody
 import com.salesforce.androidsdk.rest.NotificationsApiException
 import com.salesforce.androidsdk.rest.NotificationsTypesResponseBody.Companion.fromJson
 import com.salesforce.androidsdk.rest.RestClient
 import com.salesforce.androidsdk.rest.RestClient.ClientInfo
+import com.salesforce.androidsdk.rest.RestRequest
 import com.salesforce.androidsdk.rest.RestResponse
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.serialization.json.Json.Default.encodeToJsonElement
 import kotlinx.serialization.json.Json.Default.encodeToString
 import kotlinx.serialization.json.JsonArray
@@ -416,6 +419,33 @@ class PushMessagingTest {
                 restClient = restClient
             )
         }
+    }
+
+    @Test
+    fun test_givenEmptyBody_whenSubmitNotificationAction_thenUsesFormUrlencodedContentType() {
+        val restResponse = mockk<RestResponse>()
+        every { restResponse.asString() } returns encodeToString(
+            NotificationsActionsResponseBody.serializer(),
+            NotificationsActionsResponseBody(message = "ok")
+        )
+        every { restResponse.isSuccess } returns true
+
+        val requestSlot = slot<RestRequest>()
+        val restClient = mockk<RestClient>()
+        every { restClient.clientInfo } returns clientInfo
+        every { restClient.sendSync(capture(requestSlot)) } returns restResponse
+
+        val client = NotificationsApiClient(restClient)
+        client.submitNotificationAction(
+            notificationId = "test_notification_id",
+            actionKey = "test_action_key"
+        )
+
+        val capturedRequest = requestSlot.captured
+        val contentType = capturedRequest.requestBody?.contentType()
+        assertEquals("application", contentType?.type)
+        assertEquals("x-www-form-urlencoded", contentType?.subtype)
+        assertEquals(0L, capturedRequest.requestBody?.contentLength())
     }
 
     @Test

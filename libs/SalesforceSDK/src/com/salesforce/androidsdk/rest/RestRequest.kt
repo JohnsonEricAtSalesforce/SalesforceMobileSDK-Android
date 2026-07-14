@@ -337,6 +337,12 @@ open class RestRequest {
         val MEDIA_TYPE_JSON: MediaType = "application/json; charset=utf-8".toMediaType()
 
         /**
+         * application/x-www-form-urlencoded media type
+         */
+        @JvmField
+        val MEDIA_TYPE_FORM_URLENCODED: MediaType = "application/x-www-form-urlencoded".toMediaType()
+
+        /**
          * utf_8 charset
          */
         @JvmField
@@ -406,7 +412,7 @@ open class RestRequest {
         @Throws(UnsupportedEncodingException::class)
         fun getRequestForSingleAccess(redirectUri: String): RestRequest {
             val requestBody = ("redirect_uri=" + URLEncoder.encode(redirectUri, UTF_8))
-                .toRequestBody("application/x-www-form-urlencoded".toMediaType())
+                .toRequestBody(MEDIA_TYPE_FORM_URLENCODED)
             return RestRequest(RestMethod.POST, RestEndpoint.INSTANCE, RestAction.SINGLEACCESS.getPath(), requestBody, null)
         }
 
