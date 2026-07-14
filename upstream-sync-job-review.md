@@ -156,9 +156,29 @@ Operator chose option (a); all 17 escalations were reviewed against their file l
 
 Ledger status now: 54 pending / 1 skipped (#2894). Both gate decisions + the skip are recorded in-ledger with notes and re-rendered into the status view.
 
-### ▶️ READY TO PORT — strictly chronological from #2887 (unit 1)
-No blockers remain. Port in ledger merge order, pausing at each escalation (all 17 pre-approved). Skip #2894 (unit 6) when reached. First stretch: **#2887 (unit 1) → #2888 → #2890 → #2891 (TOML — foundational) → …**
-Per-unit loop: `gh pr diff <n> --repo "$UPSTREAM_REPO"` for the net diff → classify (confirm provisional category) → translate/apply → compile the affected lib → commit one unit → advance marker. Build-file edits (#2887, #2891) need the changes verified against our branch's post-migration `.gradle.kts` state.
+### ▶️ PORTING IN PROGRESS (autonomous mode) — paused for compaction 2026-07-14
+
+**Progress: 8 of 55 processed — 5 applied, 3 skipped, 47 pending. Marker: `2bdebfef4`. Tree clean.**
+
+Applied (each a separate commit, upstream-attributed):
+- #2887 (C) Dokka v2 — commit `ba8801b10`
+- #2888 (F) RTR UI tests — `23a0bcbbd`
+- #2891 (C) TOML catalog, 13 files, via clean `git apply` — `3b8740463`
+- #2892 (A) token-migration silent-failure fix, hand-applied (companion-import drift) — `0ec6b0d3a`
+- #2900 (B) form-urlencoded notif body — first real Java→Kotlin translation — `cebf7e06f`
+
+Skipped (content-based, at chronological turn — not reorders):
+- #2890 empty merge-from-master (0 files)
+- #2894 mooted by #2904 (RN bump)
+- #2893 adds 4 `docs/salesforcereact/*.md` that #2904 deletes (net-zero)
+
+**Carried-forward notes:**
+1. #2894 skipped ⇒ RN version NOT bumped in `libs.versions.toml`. A later catalog patch touching that line may reject `git apply` → hand-apply.
+2. #2893 skipped ⇒ when #2904 runs, its deletion of the 4 `docs/salesforcereact/*.md` will be no-ops (already absent). Expected.
+
+**RESUME AT: unit 9 = #2903 (B) "Fix unit test timeouts and other failures" (merged 2026-05-26).** Then #2901 (F), #2904 (E — big React removal, gate-approved), onward.
+
+**Per-unit loop (proven this session):** `gh pr diff <n> --repo "$UPSTREAM_REPO"` → save to /tmp → `git apply --check` (clean = branch matches upstream base; reject = drift, read rejects + hand-apply) → for Cat B, translate the `.java` upstream diff onto our `.kt` (watch Kotlin-nullability: our migrated types are `T?` where Java was a platform type) → compile affected lib (`:libs:<lib>:compileDebugSources` + `compileDebugAndroidTestSources`; use ONLINE gradle — offline fails on uncached deps, not a code error) → commit ONE unit with upstream attribution → advance marker to unit's `mergeSha` → set ledger status=applied + localCommit + re-render status view. Escalations all pre-approved: proceed, don't stop to ask.
 
 ## Working protocol
 
