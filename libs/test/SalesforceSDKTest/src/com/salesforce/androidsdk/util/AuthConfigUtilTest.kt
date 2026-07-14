@@ -30,6 +30,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Handler
+import android.os.HandlerThread
 import androidx.core.content.ContextCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SmallTest
@@ -39,6 +41,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
 
 /**
  * Tests for AuthConfigUtil.
@@ -118,27 +121,37 @@ class AuthConfigUtilTest {
         Assert.assertNull("Auth config should be null", authConfig)
     }
 
-    @Test(timeout = 5_000)
+    @Test(timeout = 30_000)
     fun testBroadcastSucceeds() {
         testBroadcast(MY_DOMAIN_ENDPOINT, true)
     }
 
-    @Test(timeout = 5_000)
+    @Test(timeout = 30_000)
     fun testBroadcastFails() {
         testBroadcast(SANDBOX_ENDPOINT, false)
     }
 
     private fun testBroadcast(endpoint: String, expected: Boolean) {
+        // Receive the broadcast on a background HandlerThread rather than the main thread.
+        // Other tests in this shard launch Activities on the main thread; by the time
+        // sendBroadcast is invoked, the main looper can be backed up enough that the
+        // receiver's onReceive doesn't run before the test's timeout, even though the
+        // broadcast was dispatched. A dedicated Handler decouples broadcast delivery
+        // from main-thread saturation.
+        val handlerThread = HandlerThread("AuthConfigUtilTest-receiver")
+        handlerThread.start()
+        val handler = Handler(handlerThread.looper)
         val receiver = TestBroadcastReceiver()
         ContextCompat.registerReceiver(
             SalesforceSDKManager.getInstance().appContext, receiver,
-            IntentFilter(AuthConfigUtil.AUTH_CONFIG_COMPLETE_INTENT_ACTION), ContextCompat.RECEIVER_NOT_EXPORTED
+            IntentFilter(AuthConfigUtil.AUTH_CONFIG_COMPLETE_INTENT_ACTION), null,
+            handler, ContextCompat.RECEIVER_NOT_EXPORTED
         )
 
         try {
             AuthConfigUtil.getMyDomainAuthConfig(endpoint)
 
-            val intent = receiver.getIntent().get()
+            val intent = receiver.getIntent().get(20, TimeUnit.SECONDS)
             Assert.assertTrue("The intent extra should be set", intent.hasExtra(AuthConfigUtil.WAS_REQUEST_SUCCESSFUL_EXTRA))
 
             val extra = intent.getBooleanExtra(AuthConfigUtil.WAS_REQUEST_SUCCESSFUL_EXTRA, !expected)
@@ -149,6 +162,7 @@ class AuthConfigUtilTest {
             }
         } finally {
             SalesforceSDKManager.getInstance().appContext.unregisterReceiver(receiver)
+            handlerThread.quitSafely()
         }
     }
 }
