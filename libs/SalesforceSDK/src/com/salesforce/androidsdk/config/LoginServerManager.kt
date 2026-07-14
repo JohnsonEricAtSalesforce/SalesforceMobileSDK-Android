@@ -143,14 +143,15 @@ class LoginServerManager @VisibleForTesting constructor(
         if (selectedLoginServer == null) {
             // Default to the first login server on the list.
             if (loginServers.isNotEmpty()) {
-                selectedServer.postValue(loginServers[0])
+                selectedLoginServer = loginServers[0]
+                selectedServer.postValue(selectedLoginServer)
             }
 
             // Store the selected login server.
-            setSelectedLoginServer(selectedServer.value)
+            setSelectedLoginServer(selectedLoginServer)
         }
 
-        return selectedServer.value
+        return selectedLoginServer
     }
 
     /**
