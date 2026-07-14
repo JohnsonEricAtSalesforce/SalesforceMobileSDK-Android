@@ -202,8 +202,8 @@ open class AuthenticatorService : Service() {
         const val KEY_SID_COOKIE_NAME = "sidCookieName"
         const val KEY_PARENT_SID = "parentSid"
         const val KEY_TOKEN_FORMAT = "tokenFormat"
-        const val KEY_BEACON_CHILD_CONSUMER_KEY = "beacon_child_consumer_key"
-        const val KEY_BEACON_CHILD_CONSUMER_SECRET = "beacon_child_consumer_secret"
+        const val KEY_BEACON_CHILD_CONSUMER_KEY = "auto_installed_app_org_consumer_key"
+        const val KEY_BEACON_CHILD_CONSUMER_SECRET = "auto_installed_app_org_consumer_secret"
         const val KEY_SCOPE = "scope"
 
         private const val TAG = "AuthenticatorService"

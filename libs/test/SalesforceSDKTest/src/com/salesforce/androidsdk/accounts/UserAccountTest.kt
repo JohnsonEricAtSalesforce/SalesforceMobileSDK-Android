@@ -662,8 +662,8 @@ class UserAccountTest {
 
     private fun createTokenEndpointResponseLikeWebServerFlow(): OAuth2.TokenEndpointResponse {
         val params = createTokenEndpointParams()
-        params["beacon_child_consumer_key"] = TEST_BEACON_CHILD_CONSUMER_KEY
-        params["beacon_child_consumer_secret"] = TEST_BEACON_CHILD_CONSUMER_SECRET
+        params["auto_installed_app_org_consumer_key"] = TEST_BEACON_CHILD_CONSUMER_KEY
+        params["auto_installed_app_org_consumer_secret"] = TEST_BEACON_CHILD_CONSUMER_SECRET
         val responseJson = JSONObject(params as Map<*, *>)
         val mediaType = ("application/json").toMediaType()
         val responseBody = ResponseBody.create(mediaType, responseJson.toString())

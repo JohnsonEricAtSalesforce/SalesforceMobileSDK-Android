@@ -974,8 +974,8 @@ class UserAccount {
         const val CLIENT_ID = "clientId"
         const val PARENT_SID = "parentSid"
         const val TOKEN_FORMAT = "tokenFormat"
-        const val BEACON_CHILD_CONSUMER_KEY = "beacon_child_consumer_key"
-        const val BEACON_CHILD_CONSUMER_SECRET = "beacon_child_consumer_secret"
+        const val BEACON_CHILD_CONSUMER_KEY = "auto_installed_app_org_consumer_key"
+        const val BEACON_CHILD_CONSUMER_SECRET = "auto_installed_app_org_consumer_secret"
         const val SCOPE = "scope"
 
         private const val TAG = "UserAccount"
