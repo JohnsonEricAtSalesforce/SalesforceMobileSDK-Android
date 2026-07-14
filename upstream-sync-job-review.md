@@ -182,6 +182,33 @@ Skipped (verified valid):
 
 **RESUME AT: unit 12 = #2905 (F) "Add PR Review Skill" (merged 2026-05-28).** Then #2906 (E — "Remove remaining SalesforceReact references"), #2907 (A), onward. NOTE for #2906: React trees are already fully gone on our branch as of #2904; #2906's remaining-reference cleanup may be partial no-ops — verify against its actual diff.
 
+### ▶️ UPDATE — through #2913 (2026-07-14, post-compaction session)
+
+**Progress: 19 of 55 processed — 18 applied, 1 skipped, 36 pending. Marker: `20ddbd717` (#2913). Tree clean; 49 commits ahead of dev.**
+
+Additional applied since last update:
+- #2905 (F) PR Review Skill (.prizm + .claude/skills symlink) — `6a91c3b0d`
+- #2906 (E) remaining SalesforceReact refs (4 CI/config + 2 READMEs) — `8d0555f16` — **CI-config approved for React cluster**
+- #2907 (A) Simulate Welcome Discovery test seam — `4c8ad35ad` — **ESCALATION (login UI + sf__strings), operator-approved.** New user-facing string `sf__login_options_save_and_login`.
+- #2908 (A) postValue crash fix — `5de9d6c93`
+- #2910 (F) CI security hardening (4 workflows) — `c0bfe3197` — **ESCALATION (CI config), operator-approved THIS-UNIT-ONLY**
+- #2912 (B) test_login_domain https prefix (TestCredentials.kt) — `83a93f656`
+- #2909 (A) transient Welcome Discovery My Domain — `1bce0655e` — **ESCALATION (login UI), login-UI cluster approved**
+- #2913 (B) app attestation → Web Server Flow — `2fef69159` — **ESCALATION (OAuth flow + new public API), operator-approved.** FLAG API REVIEW: new public `SalesforceSDKManager.initNative()` + `@JvmOverloads` ctor overload.
+
+**APPROVAL POLICY (operator, 2026-07-14):**
+- **React-cluster CI-config edits:** APPROVED for the run (#2904/#2906 and similar React-consequence CI).
+- **Non-React CI-config edits:** per-unit approval required (approved #2910 only).
+- **Login-UI / Welcome-Discovery flow changes:** APPROVED for the run — BUT still individually flag OAuth-token-exchange / credential-storage / crypto changes (not mere login navigation). Flagged & approved #2913 under this.
+
+**RELEASE-NOTES / LOCALIZATION / API-REVIEW backlog to surface at run end:**
+- New user-facing localized string: `sf__login_options_save_and_login` ("Save and Login") — #2907.
+- New public API: `SalesforceSDKManager.initNative(context, mainActivity, googleCloudProjectId)` + `@JvmOverloads` ctor overload — #2913.
+
+**Escalation-flag heuristic caveat:** ledger `escalation` flag is unreliable — #2907 was `escalation:false` but hit login-UI + localization triggers. CONTINUE inspecting every unit's actual diff for CLAUDE.md triggers regardless of the ledger flag.
+
+**RESUME AT: unit 20 = next pending after #2913 (check `jq '.units[]|select(.status=="pending")' | head`).** Same per-unit loop + techniques as above.
+
 **Per-unit loop (proven this session):** `gh pr diff <n> --repo "$UPSTREAM_REPO"` → save to /tmp → `git apply --check` (clean = branch matches upstream base; reject = drift, read rejects + hand-apply) → for Cat B, translate the `.java` upstream diff onto our `.kt` (watch Kotlin-nullability: our migrated types are `T?` where Java was a platform type) → compile affected lib (`:libs:<lib>:compileDebugSources` + `compileDebugAndroidTestSources`; use ONLINE gradle — offline fails on uncached deps, not a code error) → commit ONE unit with upstream attribution → advance marker to unit's `mergeSha` → set ledger status=applied + localCommit + re-render status view. Escalations all pre-approved: proceed, don't stop to ask.
 
 ## Working protocol
