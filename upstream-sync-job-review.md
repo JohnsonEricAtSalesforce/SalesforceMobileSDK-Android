@@ -131,6 +131,35 @@ The spec (`upstream-sync-job.md` **v6**) is internally consistent and ready, and
 
 **Operator's next natural step:** review `.claude/upstream-sync-status.md` — especially the 17 escalations — and confirm/correct the provisional categories before porting begins.
 
+## Activation progress (2026-07-14)
+
+- **Working tree cleaned** — commits `bc2a150af` (12 .java deletions) + `595643aa9` (docs + gitignore). Tree clean; branch 28 ahead of `dev`.
+- **Bootstrapped (Steps 1a–1f)** — `upstream` remote added (push DISABLED), `upstream/dev` fetched (tip #2964), marker `11a4a433b` created (== `git merge-base HEAD upstream/dev`, matches pre-map). Smoke-test passed; ledger validated (55 units, not rebuilt). No cron — operator-driven first pass.
+  - The raw smoke-test count is 57 vs the ledger's 55: #2884 (its merge commit **is** the marker) and #2885 are same-second boundary ancestors, correctly excluded. Not drift.
+
+### Escalation walkthrough — COMPLETE (2026-07-14)
+Operator chose option (a); all 17 escalations were reviewed against their file lists and **APPROVED**. Recorded durably in the ledger as `escalationApproved:true` + `escalationApprovedAt:"2026-07-14"` on each escalated unit; status view now shows a "Review" column (✅ approved). Renderer copied to a durable path `.claude/upstream-sync-render.jq` (was `/tmp`-only; git-ignored).
+
+**Category corrections surfaced during review** (provisional → recommended; NOT yet written to ledger `category` fields — categories stay provisional until diff-confirmed at port time):
+- #2894 F→**C + likely SKIP** (mooted by #2904 React removal)
+- #2917 F→**C** (catalog pin); #2929 D→**C/config** (manifest edit, not new file)
+- #2913 B→**mixed A+B**; #2958 B→**mixed B+D** (new `OAuthErrorCode.kt`); #2960 B→**C+B** (dep bump + 1 Java test)
+- #2918 (A) & #2951 (A): source is Kotlin-on-Kotlin, but **build+policy** (#2918 minSdk — needs team sign-off) / **security** (#2951 ASA — high priority) escalations dominate
+- #2956 A holds, but `sf__strings.xml` = **localization escalation** too
+- Root signal for B-vs-A: OAuth source (`OAuth2.java`, `AuthenticatorService.java`, `ClientManager.java`) is still `.java` upstream ⇒ our branch has `.kt`+`.java.bak` ⇒ upstream Java diff must be **translated** (B). Already-`.kt` upstream files ⇒ near-cherry-pick (A, subject to drift).
+
+**ORDERING INVARIANT added to spec** (`upstream-sync-job.md` → Processing Unit section): chronological/ledger merge order (unit 1→N) is **mandatory**; reordering by risk/ease manufactures phantom conflicts in both directions (later-first = no base to land on; earlier-after-restructure = stale conflict). Only permitted deviation: provably-disjoint file sets. A skip decision and a pre-run go/no-go gate are **not** reorders. (This corrects my own earlier "port easy ones first" suggestion, which had inverted units 1,2 behind 4,21 and would have broken the TOML-catalog dependency chain.)
+
+### Strategic gates — BOTH APPROVED (2026-07-14)
+- **#2904 (unit 11) — Remove SalesforceReact: GO.** Adopt upstream's extraction to SalesforceMobileSDK-ReactNative. Ledger: `gateDecision:"go"`. Consequence: **#2894 marked `skipped`** (RN version bump moot once the lib is removed). Also simplifies our deferred-React (P8/Hermes) problem. NB when porting: touches `settings.gradle.kts` + `install.sh`/`install.vbs` — permitted here by this explicit approval.
+- **#2918 (unit 22) — Bump minSdk to 31: GO.** Team sign-off given. Ledger: `gateDecision:"go"`.
+
+Ledger status now: 54 pending / 1 skipped (#2894). Both gate decisions + the skip are recorded in-ledger with notes and re-rendered into the status view.
+
+### ▶️ READY TO PORT — strictly chronological from #2887 (unit 1)
+No blockers remain. Port in ledger merge order, pausing at each escalation (all 17 pre-approved). Skip #2894 (unit 6) when reached. First stretch: **#2887 (unit 1) → #2888 → #2890 → #2891 (TOML — foundational) → …**
+Per-unit loop: `gh pr diff <n> --repo "$UPSTREAM_REPO"` for the net diff → classify (confirm provisional category) → translate/apply → compile the affected lib → commit one unit → advance marker. Build-file edits (#2887, #2891) need the changes verified against our branch's post-migration `.gradle.kts` state.
+
 ## Working protocol
 
 We work through P1→P6 in iterations, together. For each item: re-think → propose → operator approves → apply edit to `upstream-sync-job.md` → mark done here. This tracker is the durable record; the session task list mirrors live status.

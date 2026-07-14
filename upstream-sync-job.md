@@ -164,6 +164,12 @@ Each merge commit to `dev` (or squash-merge) is exactly one processing unit. No 
 
 **Why:** Each PR merge to `dev` represents a deployable state. The feature branch must also be deployable after each ported unit. Consolidation destroys traceability.
 
+**Ordering invariant — chronological is mandatory.** Port units in ledger merge order (unit 1 → N), never reordered by risk/ease/category. Each upstream PR's diff was authored against the state the *previous* merges left behind, so chronological order is the only order in which diffs land cleanly and dependencies resolve themselves for free. Reordering manufactures phantom conflicts in both directions:
+- Porting a later unit first ⇒ its diff has no base to land on (e.g. #2894/#2917/#2951/#2960 edit `gradle/libs.versions.toml`, which **#2891 introduces** — port any of them before #2891 and there is no catalog to edit).
+- Porting an earlier unit after a later one that restructured a shared file ⇒ stale conflict (e.g. **#2887** edits `libs/SalesforceReact/build.gradle.kts` at unit 1, but **#2904** deletes that whole library later — reorder them and you edit a deleted file, or delete edits you just made).
+
+The **only** permitted deviation is when two adjacent units touch **provably disjoint file sets** with no shared build/config file — and even then the payoff is marginal, so default to strict order. **A skip decision is not a reorder** (evaluate it at that unit's chronological turn — e.g. #2894 is mooted by #2904, so skip it when the run reaches #2894). **A pre-run go/no-go gate is not a reorder** (decide #2904 React-removal and #2918 minSdk-bump before the run reaches their positions; the decision moves nothing earlier or later).
+
 **Derivation of the diff to translate:**
 ```bash
 # PRIMARY — for ANY PR (correct for squash, merge-commit, AND rebase-merge):

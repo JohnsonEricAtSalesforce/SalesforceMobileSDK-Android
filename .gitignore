@@ -33,3 +33,4 @@ keep.xml
 .claude/upstream-sync-status.md
 /com/
 *.class
+.claude/upstream-sync-render.jq
