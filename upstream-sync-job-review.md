@@ -156,27 +156,31 @@ Operator chose option (a); all 17 escalations were reviewed against their file l
 
 Ledger status now: 54 pending / 1 skipped (#2894). Both gate decisions + the skip are recorded in-ledger with notes and re-rendered into the status view.
 
-### ▶️ PORTING IN PROGRESS (autonomous mode) — paused for compaction 2026-07-14
+### ▶️ PORTING IN PROGRESS (autonomous mode) — post-compaction, through #2904 (2026-07-14)
 
-**Progress: 8 of 55 processed — 5 applied, 3 skipped, 47 pending. Marker: `2bdebfef4`. Tree clean.**
+**Progress: 11 of 55 processed — 10 applied, 1 skipped, 44 pending. Marker: `f9517493e` (#2904). Tree clean; 40 commits ahead of dev.**
 
 Applied (each a separate commit, upstream-attributed):
-- #2887 (C) Dokka v2 — commit `ba8801b10`
+- #2887 (C) Dokka v2 — `ba8801b10`
 - #2888 (F) RTR UI tests — `23a0bcbbd`
-- #2891 (C) TOML catalog, 13 files, via clean `git apply` — `3b8740463`
+- #2891 (C) TOML catalog — `3b8740463`
 - #2892 (A) token-migration silent-failure fix, hand-applied (companion-import drift) — `0ec6b0d3a`
-- #2900 (B) form-urlencoded notif body — first real Java→Kotlin translation — `cebf7e06f`
+- #2900 (B) form-urlencoded notif body (first Java→Kotlin translation) — `cebf7e06f`
+- #2903 (B mixed) unit-test-timeout fixes: shard JSON + new Biometric test + 2 .kt edits applied clean, AuthConfigUtilTest .java diff hand-translated onto .kt (HandlerThread, 30s timeouts) — `75680a969`
+- #2901 (F) AuthFlowTester UI tests; nullability fix `HttpAccess.DEFAULT!!`/`refreshToken!!` — `04dc89e7d`
+- #2893 (F) SalesforceReact docs — **UN-SKIPPED CORRECTION** — `a097dc381`
+- #2894 (F) RN 0.79.3→0.81.5 catalog bump — **UN-SKIPPED CORRECTION** — `44b24421f`
+- #2904 (E) **Remove SalesforceReact** (46 upstream deletes → 69 on our branch incl .java.bak; 9 mods; gate-approved build/install edits) — `f57065e7b`
 
-Skipped (content-based, at chronological turn — not reorders):
-- #2890 empty merge-from-master (0 files)
-- #2894 mooted by #2904 (RN bump)
-- #2893 adds 4 `docs/salesforcereact/*.md` that #2904 deletes (net-zero)
+Skipped (verified valid):
+- #2890 empty merge-from-master (0 files / 0 additions / 0 deletions — re-confirmed).
 
-**Carried-forward notes:**
-1. #2894 skipped ⇒ RN version NOT bumped in `libs.versions.toml`. A later catalog patch touching that line may reject `git apply` → hand-apply.
-2. #2893 skipped ⇒ when #2904 runs, its deletion of the 4 `docs/salesforcereact/*.md` will be no-ops (already absent). Expected.
+**⚠️ SKIP-AUDIT FINDING (2026-07-14): 2 of my 3 earlier content-based skips were WRONG and have been corrected.**
+- **#2893** — earlier skip claimed "#2904 deletes these 4 docs → net-zero." FALSE: #2904 *modifies* (not deletes) `docs/salesforcereact/*.md` (adds "moved to ReactNative repo" banner); all 4 persist at upstream tip. Skipping left drift AND left #2904's doc edits with no base. Un-skipped + ported ahead of #2904 (`a097dc381`).
+- **#2894** — earlier skip claimed "mooted by #2904 (RN removal)." FALSE: #2904 does not touch `libs.versions.toml`, and `react-android = 0.81.5` persists at tip (SalesforceReactActivity/SDKManager only moved repos; the catalog entry stays). Un-skipped + applied (`44b24421f`). This also clears old carried-forward note 1.
+- **Lesson:** content-based skip reasoning that depends on a *later* unit's behavior must be verified against that unit's actual `gh pr diff` AND upstream tip *before* skipping — not assumed. Both old carried-forward notes are now void.
 
-**RESUME AT: unit 9 = #2903 (B) "Fix unit test timeouts and other failures" (merged 2026-05-26).** Then #2901 (F), #2904 (E — big React removal, gate-approved), onward.
+**RESUME AT: unit 12 = #2905 (F) "Add PR Review Skill" (merged 2026-05-28).** Then #2906 (E — "Remove remaining SalesforceReact references"), #2907 (A), onward. NOTE for #2906: React trees are already fully gone on our branch as of #2904; #2906's remaining-reference cleanup may be partial no-ops — verify against its actual diff.
 
 **Per-unit loop (proven this session):** `gh pr diff <n> --repo "$UPSTREAM_REPO"` → save to /tmp → `git apply --check` (clean = branch matches upstream base; reject = drift, read rejects + hand-apply) → for Cat B, translate the `.java` upstream diff onto our `.kt` (watch Kotlin-nullability: our migrated types are `T?` where Java was a platform type) → compile affected lib (`:libs:<lib>:compileDebugSources` + `compileDebugAndroidTestSources`; use ONLINE gradle — offline fails on uncached deps, not a code error) → commit ONE unit with upstream attribution → advance marker to unit's `mergeSha` → set ledger status=applied + localCommit + re-render status view. Escalations all pre-approved: proceed, don't stop to ask.
 
