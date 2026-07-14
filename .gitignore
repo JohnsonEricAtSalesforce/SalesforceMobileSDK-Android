@@ -28,3 +28,8 @@ native/NativeSampleApps/AuthFlowTester/src/main/assets/
 .vscode/
 Test*.html
 keep.xml
+.claude/upstream-sync-marker
+.claude/upstream-sync-ledger.json
+.claude/upstream-sync-status.md
+/com/
+*.class
