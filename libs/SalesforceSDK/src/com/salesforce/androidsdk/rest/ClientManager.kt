@@ -42,6 +42,10 @@ import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.AuthenticatorService
 import com.salesforce.androidsdk.auth.HttpAccess
 import com.salesforce.androidsdk.auth.OAuth2
+import com.salesforce.androidsdk.auth.OAuth2.Companion.CLIENT_BLOCKED_ERROR
+import com.salesforce.androidsdk.auth.OAuth2.Companion.CLIENT_BLOCKED_RETRY_ERROR
+import com.salesforce.androidsdk.auth.OAuth2.LogoutReason.CLIENT_BLOCKED
+import com.salesforce.androidsdk.auth.OAuth2.LogoutReason.REFRESH_TOKEN_EXPIRED
 import com.salesforce.androidsdk.rest.RestClient.ClientInfo
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
 import java.net.URI
@@ -365,13 +369,14 @@ class ClientManager(
             var newAuthToken: String? = null
             var newInstanceUrl: String? = null
             var shouldUpdateCache = false
+            var accounts: Array<Account>? = null
+            var matchingAccount: Account? = null
 
             try {
                 // Only check for matching account inside synchronized thread that
                 // is actually getting the new auth token.
                 val userAccountManager = SalesforceSDKManager.getInstance().userAccountManager
-                val accounts = clientManager.getAccounts()
-                var matchingAccount: Account? = null
+                accounts = clientManager.getAccounts()
 
                 if (refreshToken != null) {
                     for (account in accounts) {
@@ -391,33 +396,33 @@ class ClientManager(
                 // We found a matching account, so we'll attempt a refresh and should update the cache.
                 shouldUpdateCache = true
 
-                // Invalidate current auth token.
-                clientManager.invalidateToken(lastNewAuthToken)
+                /*
+                 * Invalidate current auth token. After a prior
+                 * client_blocked_retry the cached token is null because
+                 * that path clears it without logging out.
+                 * AccountManager.invalidateAuthToken is a no-op for
+                 * null, but guarding here avoids a wasteful call whose
+                 * frequency increases with retriable attestation
+                 * errors.
+                 */
+                if (lastNewAuthToken != null) {
+                    clientManager.invalidateToken(lastNewAuthToken)
+                }
                 val userAccount = refreshStaleToken(matchingAccount)
 
-                // NB: userAccount will be null if refresh token is no longer valid
-                newAuthToken = userAccount?.authToken
-                newInstanceUrl = userAccount?.instanceServer
+                // Defensive: refreshStaleToken is non-null, but guard anyway (mirrors upstream's
+                // //noinspection ConstantValue check) so a null slipping through is treated as a
+                // terminal, revocable error rather than a NullPointerException.
+                @Suppress("SENSELESS_COMPARISON")
+                if (userAccount == null) {
+                    throw MalformedTokenException("refreshStaleToken returned null")
+                }
+
+                newAuthToken = userAccount.authToken
+                newInstanceUrl = userAccount.instanceServer
 
                 val broadcastIntent: Intent
-                if (newAuthToken == null) {
-                    if (clientManager.revokedTokenShouldLogout) {
-
-                        // Check if a looper exists before trying to prepare another one.
-                        if (Looper.myLooper() == null) {
-                            Looper.prepare()
-                        }
-                        val showLoginPage = accounts.size == 1
-                        // Note: As of writing (2024) this call will never succeed because revoke API is an
-                        // authenticated endpoint.  However, there is no harm in attempting and the debug logs
-                        // produced may help developers better understand the state of their app.
-                        SalesforceSDKManager.getInstance()
-                            .logout(matchingAccount, null, showLoginPage, OAuth2.LogoutReason.REFRESH_TOKEN_EXPIRED)
-                    }
-
-                    // Broadcasts an intent that the refresh token has been revoked.
-                    broadcastIntent = Intent(ACCESS_TOKEN_REVOKE_INTENT)
-                } else if (newInstanceUrl != null && !newInstanceUrl.equals(lastNewInstanceUrl, ignoreCase = true)) {
+                if (newInstanceUrl != null && !newInstanceUrl.equals(lastNewInstanceUrl, ignoreCase = true)) {
 
                     // Broadcasts an intent that the instance server has changed (implicitly token refreshed too).
                     broadcastIntent = Intent(INSTANCE_URL_UPDATE_INTENT)
@@ -430,7 +435,62 @@ class ClientManager(
                 broadcastIntent.setPackage(SalesforceSDKManager.getInstance().appContext.packageName)
                 SalesforceSDKManager.getInstance().appContext.sendBroadcast(broadcastIntent)
             } catch (e: Exception) {
-                SalesforceSDKLogger.w(TAG, "Exception thrown while getting auth token", e)
+                if (e is OAuth2.OAuthFailedException || e is MalformedTokenException) {
+                    /*
+                     * OAuthFailedException: token endpoint returned
+                     * an error (e.g. client_blocked,
+                     * client_blocked_retry, invalid_grant).
+                     *
+                     * MalformedTokenException: token endpoint returned
+                     * success but the response lacked an access token.
+                     *
+                     * Common action: broadcast ACCESS_TOKEN_REVOKE_INTENT
+                     * and, for terminal errors, logout the user.
+                     */
+                    val errorType: String?
+                    val errorDesc: String?
+                    if (e is OAuth2.OAuthFailedException) {
+                        val tokenError = e.tokenErrorResponse
+                        errorType = tokenError.error
+                        errorDesc = tokenError.errorDescription
+                    } else {
+                        errorType = null
+                        errorDesc = null
+                    }
+
+                    if (CLIENT_BLOCKED_RETRY_ERROR != errorType) {
+                        // Terminal error (client_blocked, invalid_grant, malformed token, etc.) — logout.
+                        if (clientManager.revokedTokenShouldLogout) {
+                            if (Looper.myLooper() == null) {
+                                Looper.prepare()
+                            }
+                            val showLoginPage = (accounts?.size ?: 0) == 1
+                            val reason = if (CLIENT_BLOCKED_ERROR == errorType) {
+                                CLIENT_BLOCKED
+                            } else {
+                                REFRESH_TOKEN_EXPIRED
+                            }
+                            // Note: As of writing (2024) this call will never succeed because revoke API is an
+                            // authenticated endpoint.  However, there is no harm in attempting and the debug logs
+                            // produced may help developers better understand the state of their app.
+                            SalesforceSDKManager.getInstance()
+                                .logout(matchingAccount, null, showLoginPage, reason)
+                        }
+                    }
+
+                    // Broadcast revoke intent with error details when available.
+                    val broadcastIntent = Intent(ACCESS_TOKEN_REVOKE_INTENT)
+                    if (errorType != null) {
+                        broadcastIntent.putExtra(EXTRA_TOKEN_ERROR, errorType)
+                    }
+                    if (errorDesc != null) {
+                        broadcastIntent.putExtra(EXTRA_TOKEN_ERROR_DESCRIPTION, errorDesc)
+                    }
+                    broadcastIntent.setPackage(SalesforceSDKManager.getInstance().appContext.packageName)
+                    SalesforceSDKManager.getInstance().appContext.sendBroadcast(broadcastIntent)
+                } else {
+                    SalesforceSDKLogger.w(TAG, "Exception thrown while getting auth token", e)
+                }
             } finally {
                 synchronized(lock) {
                     gettingAuthToken = false
@@ -457,16 +517,20 @@ class ClientManager(
             return lastNewInstanceUrl
         }
 
-        @Throws(NetworkErrorException::class)
-        private fun refreshStaleToken(account: Account): UserAccount? {
+        @Throws(NetworkErrorException::class, OAuth2.OAuthFailedException::class, MalformedTokenException::class)
+        private fun refreshStaleToken(account: Account): UserAccount {
             val originalUserAccount = UserAccountManager.getInstance().buildUserAccount(account)
-                ?: return null
+                ?: throw MalformedTokenException("Could not build user account for refresh")
             val addlParamsMap = originalUserAccount.additionalOauthValues
             try {
                 val tr = OAuth2.refreshAuthToken(
                     HttpAccess.DEFAULT!!,
                     URI(originalUserAccount.loginServer!!), originalUserAccount.clientIdForRefresh!!, refreshToken!!, addlParamsMap
                 )
+
+                if (tr.authToken == null) {
+                    throw MalformedTokenException("Token endpoint returned null access token")
+                }
 
                 val updatedUserAccount = UserAccountBuilder.getInstance()
                     .populateFromUserAccount(originalUserAccount)
@@ -486,20 +550,25 @@ class ClientManager(
 
                 return updatedUserAccount
             } catch (ofe: OAuth2.OAuthFailedException) {
-                if (ofe.isRefreshTokenInvalid) {
-                    SalesforceSDKLogger.i(
-                        TAG, "Invalid Refresh Token: (Error: " +
-                                ofe.tokenErrorResponse.error + ", Status Code: " +
-                                ofe.httpStatusCode + ")", ofe
-                    )
-                }
-                return null
+                SalesforceSDKLogger.i(
+                    TAG, "Token endpoint error: (Error: " +
+                            ofe.tokenErrorResponse.error + ", Status Code: " +
+                            ofe.httpStatusCode + ")", ofe
+                )
+                throw ofe
+            } catch (mte: MalformedTokenException) {
+                throw mte
             } catch (e: Exception) {
                 SalesforceSDKLogger.e(TAG, "Exception thrown while getting new auth token", e)
                 throw NetworkErrorException(e)
             }
         }
     }
+
+    /**
+     * Exception thrown when a token refresh response is malformed (e.g. missing access_token).
+     */
+    internal class MalformedTokenException(msg: String) : Exception(msg)
 
     /**
      * Exception thrown when no account could be found (during a
@@ -520,6 +589,13 @@ class ClientManager(
         const val ACCESS_TOKEN_REVOKE_INTENT: String = "access_token_revoked"
         const val ACCESS_TOKEN_REFRESH_INTENT: String = "access_token_refeshed"
         const val INSTANCE_URL_UPDATE_INTENT: String = "instance_url_updated"
+
+        /** Intent extra: the `error` value from the token endpoint response (e.g. "client_blocked", "invalid_grant"). */
+        const val EXTRA_TOKEN_ERROR: String = "token_error"
+
+        /** Intent extra: the `error_description` value from the token endpoint response. */
+        const val EXTRA_TOKEN_ERROR_DESCRIPTION: String = "token_error_description"
+
         private const val TAG = "ClientManager"
     }
 }

@@ -39,6 +39,7 @@ import android.os.IBinder
 import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager
+import com.salesforce.androidsdk.auth.OAuth2.Companion.CLIENT_BLOCKED_RETRY_ERROR
 import com.salesforce.androidsdk.auth.OAuth2.OAuthFailedException
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
 import java.net.URI
@@ -108,11 +109,13 @@ open class AuthenticatorService : Service() {
 
                 return resBundle
             } catch (ofe: OAuthFailedException) {
-                if (ofe.isRefreshTokenInvalid) {
-                    SalesforceSDKLogger.i(
-                        TAG, "Invalid Refresh Token: (Error: " +
-                                ofe.tokenErrorResponse.error + ", Status Code: " + ofe.httpStatusCode + ")", ofe
-                    )
+                SalesforceSDKLogger.i(
+                    TAG, "Token endpoint error: (Error: " +
+                            ofe.tokenErrorResponse.error + ", Status Code: " + ofe.httpStatusCode + ")", ofe
+                )
+
+                // Terminal errors (except retriable attestation) redirect to login.
+                if (CLIENT_BLOCKED_RETRY_ERROR != ofe.tokenErrorResponse.error && ofe.isRefreshTokenInvalid) {
                     return makeAuthIntentBundle(response, options)
                 }
 

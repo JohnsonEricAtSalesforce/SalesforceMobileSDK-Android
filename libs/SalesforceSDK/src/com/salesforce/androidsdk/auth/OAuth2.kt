@@ -93,6 +93,7 @@ class OAuth2 {
         UNEXPECTED,              // Unexpected error or crash
         UNEXPECTED_RESPONSE,     // Unexpected response from server
         UNKNOWN,                 // Unknown
+        CLIENT_BLOCKED,          // Device/app blocked by server (e.g. failed attestation)
         USER_LOGOUT,             // User initiated logout
         REFRESH_TOKEN_ROTATED;   // Refresh token rotated
 
@@ -513,6 +514,12 @@ class OAuth2 {
         private const val HYBRID_REFRESH = "hybrid_refresh"
         const val LOGIN_HINT = "login_hint"
         private const val REFRESH_TOKEN = "refresh_token"
+
+        /** Token endpoint error: device/app permanently blocked by attestation. Triggers logout. */
+        const val CLIENT_BLOCKED_ERROR = "client_blocked"
+
+        /** Token endpoint error: attestation could not be verified but may succeed on retry. Does not trigger logout. */
+        const val CLIENT_BLOCKED_RETRY_ERROR = "client_blocked_retry"
 
         /**
          * OAuth 2.0 authorization endpoint request body parameter names:
