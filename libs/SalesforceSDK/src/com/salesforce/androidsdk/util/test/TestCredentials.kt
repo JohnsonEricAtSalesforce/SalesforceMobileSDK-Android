@@ -99,7 +99,7 @@ object TestCredentials {
             USERNAME = json.getString("username")
             ACCOUNT_NAME = json.getString("display_name")
             USER_ID = json.getString("user_id")
-            LOGIN_URL = json.getString("test_login_domain")
+            LOGIN_URL = ensureHttpsPrefix(json.getString("test_login_domain"))
             INSTANCE_URL = json.getString("instance_url")
             API_INSTANCE_URL = JSONObjectHelper.optString(json, "api_instance_url")
             COMMUNITY_URL = json.optString("community_url", INSTANCE_URL /* in case the test_credentials.json was obtained for a user / org without community setup */)
@@ -124,7 +124,7 @@ object TestCredentials {
             USERNAME = json.getString("username")
             ACCOUNT_NAME = json.getString("display_name")
             USER_ID = json.getString("user_id")
-            LOGIN_URL = json.getString("test_login_domain")
+            LOGIN_URL = ensureHttpsPrefix(json.getString("test_login_domain"))
             INSTANCE_URL = json.getString("instance_url")
             COMMUNITY_URL = json.optString("community_url", INSTANCE_URL /* In case the test_credentials.json was obtained for a user/org without community setup */)
             IDENTITY_URL = json.getString("identity_url")
@@ -136,5 +136,11 @@ object TestCredentials {
         } catch (e: JSONException) {
             throw RuntimeException(e)
         }
+    }
+
+    private fun ensureHttpsPrefix(url: String?): String? {
+        if (url == null) return null
+        if (url.startsWith("https://") || url.startsWith("http://")) return url
+        return "https://$url"
     }
 }
