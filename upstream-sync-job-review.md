@@ -209,6 +209,26 @@ Additional applied since last update:
 
 **RESUME AT: unit 20 = next pending after #2913 (check `jq '.units[]|select(.status=="pending")' | head`).** Same per-unit loop + techniques as above.
 
+### ▶️ UPDATE — through #2916 (2026-07-14, post-compaction session, cont.)
+
+**Progress: 23 of 55 processed — 22 applied, 1 skipped, 32 pending. Marker: `699f7119a` (#2916). Tree clean; 54 commits ahead of dev. BOTH strategic gates landed (#2904 React removal, #2918 minSdk→31).**
+
+Additional applied since last update:
+- #2915 (F) AuthFlowTester README — `c1b7d9417`
+- #2917 (F) mockk pin 1.14.9→1.14.5 (build-system escalation, pre-approved) — `71d8620bd`
+- #2918 (A) **minSdk 28→31** (36 files, GATE GO w/ team sign-off) — `f4014f495`
+- #2916 (B) **token-refresh error handling** (3 auth .kt files, credential path) — `cf2682c80` — **ESCALATION (OAuth/credential), operator-approved "port with extra care"; self-reviewed control flow. FLAG SECURITY REVIEW.**
+
+**#2916 translation specifics (highest-risk unit so far):** client_blocked/client_blocked_retry error constants + CLIENT_BLOCKED LogoutReason (OAuth2.kt); refreshStaleToken now THROWS instead of returning null; getNewAuthToken terminal-vs-retriable branching (Kotlin has no multi-catch → typed if/else in one catch); revoke-intent error extras; kept upstream's defensive null-guard via @Suppress(SENSELESS_COMPARISON). ClientManagerMockTest merged 3-way (kept our reflection-based private refreshToken access). All compiled; NOT run on device.
+
+**RELEASE-NOTES / API-REVIEW / SECURITY backlog (cumulative, surface at run end):**
+- New localized string `sf__login_options_save_and_login` — #2907.
+- New public API `SalesforceSDKManager.initNative()` + ctor overload — #2913.
+- minSdk raised to 31 (breaking for API 28-30 consumers) — #2918 (gate-approved).
+- SECURITY REVIEW: token-refresh credential path rewrite — #2916.
+
+**RESUME AT: unit 24 = next pending after #2916.** Same per-unit loop. Reminder: tests compiled but NOT executed on device this run (no Firebase/emulator); flag that in the final PR.
+
 **Per-unit loop (proven this session):** `gh pr diff <n> --repo "$UPSTREAM_REPO"` → save to /tmp → `git apply --check` (clean = branch matches upstream base; reject = drift, read rejects + hand-apply) → for Cat B, translate the `.java` upstream diff onto our `.kt` (watch Kotlin-nullability: our migrated types are `T?` where Java was a platform type) → compile affected lib (`:libs:<lib>:compileDebugSources` + `compileDebugAndroidTestSources`; use ONLINE gradle — offline fails on uncached deps, not a code error) → commit ONE unit with upstream attribution → advance marker to unit's `mergeSha` → set ledger status=applied + localCommit + re-render status view. Escalations all pre-approved: proceed, don't stop to ask.
 
 ## Working protocol
