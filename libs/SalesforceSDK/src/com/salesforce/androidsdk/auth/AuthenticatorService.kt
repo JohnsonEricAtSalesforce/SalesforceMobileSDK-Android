@@ -39,7 +39,6 @@ import android.os.IBinder
 import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.app.SalesforceSDKManager
-import com.salesforce.androidsdk.auth.OAuth2.Companion.CLIENT_BLOCKED_RETRY_ERROR
 import com.salesforce.androidsdk.auth.OAuth2.OAuthFailedException
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
 
@@ -116,7 +115,7 @@ open class AuthenticatorService : Service() {
                 )
 
                 // Terminal errors (except retriable attestation) redirect to login.
-                if (CLIENT_BLOCKED_RETRY_ERROR != ofe.tokenErrorResponse.error && ofe.isRefreshTokenInvalid) {
+                if (ofe.tokenErrorResponse.errorCode != OAuthErrorCode.APP_ATTESTATION_FAILED_RETRY && ofe.isRefreshTokenInvalid) {
                     return makeAuthIntentBundle(response, options)
                 }
 

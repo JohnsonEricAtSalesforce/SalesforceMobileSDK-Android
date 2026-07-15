@@ -43,8 +43,7 @@ import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.AuthenticatorService
 import com.salesforce.androidsdk.auth.HttpAccess
 import com.salesforce.androidsdk.auth.OAuth2
-import com.salesforce.androidsdk.auth.OAuth2.Companion.CLIENT_BLOCKED_ERROR
-import com.salesforce.androidsdk.auth.OAuth2.Companion.CLIENT_BLOCKED_RETRY_ERROR
+import com.salesforce.androidsdk.auth.OAuthErrorCode
 import com.salesforce.androidsdk.auth.OAuth2.LogoutReason.CLIENT_BLOCKED
 import com.salesforce.androidsdk.auth.OAuth2.LogoutReason.REFRESH_TOKEN_EXPIRED
 import com.salesforce.androidsdk.rest.RestClient.ClientInfo
@@ -614,23 +613,26 @@ class ClientManager(
                      */
                     val errorType: String?
                     val errorDesc: String?
+                    val errorCode: OAuthErrorCode
                     if (e is OAuth2.OAuthFailedException) {
                         val tokenError = e.tokenErrorResponse
                         errorType = tokenError.error
                         errorDesc = tokenError.errorDescription
+                        errorCode = tokenError.errorCode
                     } else {
                         errorType = null
                         errorDesc = null
+                        errorCode = OAuthErrorCode.UNKNOWN
                     }
 
-                    if (CLIENT_BLOCKED_RETRY_ERROR != errorType) {
+                    if (errorCode != OAuthErrorCode.APP_ATTESTATION_FAILED_RETRY) {
                         // Terminal error (client_blocked, invalid_grant, malformed token, etc.) — logout.
                         if (clientManager.revokedTokenShouldLogout) {
                             if (Looper.myLooper() == null) {
                                 Looper.prepare()
                             }
                             val showLoginPage = accounts.size == 1
-                            val reason = if (CLIENT_BLOCKED_ERROR == errorType) {
+                            val reason = if (errorCode == OAuthErrorCode.APP_ATTESTATION_FAILED) {
                                 CLIENT_BLOCKED
                             } else {
                                 REFRESH_TOKEN_EXPIRED

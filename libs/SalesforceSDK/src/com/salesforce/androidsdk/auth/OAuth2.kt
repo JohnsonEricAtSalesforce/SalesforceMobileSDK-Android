@@ -294,14 +294,17 @@ class OAuth2 {
 
         @JvmField var error: String? = null
         @JvmField var errorDescription: String? = null
+        @JvmField var errorCode: OAuthErrorCode = OAuthErrorCode.UNKNOWN
 
         init {
             try {
                 val parsedResponse = RestResponse(response).asJSONObject()
                 error = parsedResponse.getString(ERROR)
                 errorDescription = parsedResponse.getString(ERROR_DESCRIPTION)
+                errorCode = OAuthErrorCode.from(error)
             } catch (e: Exception) {
                 SalesforceSDKLogger.w(TAG, "Could not parse token error response", e)
+                errorCode = OAuthErrorCode.UNKNOWN
             }
         }
 
@@ -520,12 +523,6 @@ class OAuth2 {
         private const val HYBRID_REFRESH = "hybrid_refresh"
         const val LOGIN_HINT = "login_hint"
         private const val REFRESH_TOKEN = "refresh_token"
-
-        /** Token endpoint error: device/app permanently blocked by attestation. Triggers logout. */
-        const val CLIENT_BLOCKED_ERROR = "client_blocked"
-
-        /** Token endpoint error: attestation could not be verified but may succeed on retry. Does not trigger logout. */
-        const val CLIENT_BLOCKED_RETRY_ERROR = "client_blocked_retry"
 
         /**
          * OAuth 2.0 authorization endpoint request body parameter names:
