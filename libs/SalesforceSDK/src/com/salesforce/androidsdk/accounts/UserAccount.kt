@@ -40,6 +40,7 @@ import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.ScopeParser
 import com.salesforce.androidsdk.util.MapUtil
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
@@ -332,6 +333,18 @@ class UserAccount {
      */
     var scope: String? = null
         internal set
+
+    private var _featureFlags: MutableSet<String> = HashSet()
+
+    /**
+     * The persisted per-user feature flags (e.g. BW, SU, MS). Reads return an
+     * unmodifiable snapshot; writes replace the in-memory set with a copy.
+     */
+    var featureFlags: Set<String>
+        get() = _featureFlags.toSet()
+        set(flags) {
+            _featureFlags = HashSet(flags)
+        }
 
     /**
      * Returns the OAuth client id to use for refresh.
@@ -856,6 +869,11 @@ class UserAccount {
             jsonObject.put(BEACON_CHILD_CONSUMER_KEY, beaconChildConsumerKey)
             jsonObject.put(BEACON_CHILD_CONSUMER_SECRET, beaconChildConsumerSecret)
             jsonObject.put(SCOPE, scope)
+            if (_featureFlags.isNotEmpty()) {
+                val flagsArray = JSONArray()
+                for (f in _featureFlags) flagsArray.put(f)
+                jsonObject.put(FEATURE_FLAGS, flagsArray)
+            }
             jsonObject = MapUtil.addMapToJSONObject(additionalOauthValues, additionalOauthKeys, jsonObject) ?: jsonObject
         } catch (e: JSONException) {
             SalesforceSDKLogger.e(TAG, "Unable to convert to JSON", e)
@@ -977,6 +995,7 @@ class UserAccount {
         const val BEACON_CHILD_CONSUMER_KEY = "auto_installed_app_org_consumer_key"
         const val BEACON_CHILD_CONSUMER_SECRET = "auto_installed_app_org_consumer_secret"
         const val SCOPE = "scope"
+        const val FEATURE_FLAGS = "feature_flags"
 
         private const val TAG = "UserAccount"
         private const val FORWARD_SLASH = "/"

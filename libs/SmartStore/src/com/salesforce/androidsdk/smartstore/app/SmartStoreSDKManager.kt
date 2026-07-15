@@ -136,7 +136,7 @@ open class SmartStoreSDKManager protected constructor(
      */
     fun getSmartStore(dbNamePrefix: String?, account: UserAccount?, communityId: String?): SmartStore {
         val effectiveDbName = if (TextUtils.isEmpty(dbNamePrefix)) DBOpenHelper.DEFAULT_DB_NAME else dbNamePrefix!!
-        SalesforceSDKManager.getInstance().registerUsedAppFeature(Features.FEATURE_SMART_STORE_USER)
+        SalesforceSDKManager.getInstance().registerUsedAppFeature(Features.FEATURE_SMART_STORE_USER, account)
         val dbOpenHelper = DBOpenHelper.getOpenHelper(
             encryptionKey, context,
             effectiveDbName, account, communityId

@@ -206,6 +206,7 @@ open class AuthenticatorService : Service() {
         const val KEY_BEACON_CHILD_CONSUMER_KEY = "auto_installed_app_org_consumer_key"
         const val KEY_BEACON_CHILD_CONSUMER_SECRET = "auto_installed_app_org_consumer_secret"
         const val KEY_SCOPE = "scope"
+        const val KEY_FEATURE_FLAGS = "feature_flags"
 
         private const val TAG = "AuthenticatorService"
 

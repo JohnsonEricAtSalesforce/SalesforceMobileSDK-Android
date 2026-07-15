@@ -477,6 +477,7 @@ open class UserAccountManager protected constructor() {
         val beaconChildConsumerKey = decryptUserData(account, AuthenticatorService.KEY_BEACON_CHILD_CONSUMER_KEY, encryptionKey)
         val beaconChildConsumerSecret = decryptUserData(account, AuthenticatorService.KEY_BEACON_CHILD_CONSUMER_SECRET, encryptionKey)
         val scope = decryptUserData(account, AuthenticatorService.KEY_SCOPE, encryptionKey)
+        val featureFlagsRaw = decryptUserData(account, AuthenticatorService.KEY_FEATURE_FLAGS, encryptionKey)
 
         var additionalOauthValues: Map<String, String>? = null
         val additionalOauthKeys = SalesforceSDKManager.getInstance().additionalOauthKeys
@@ -497,7 +498,7 @@ open class UserAccountManager protected constructor() {
         return if (authToken == null || instanceServer == null || userId == null || orgId == null) {
             null
         } else {
-            UserAccountBuilder.getInstance()
+            val userAccount = UserAccountBuilder.getInstance()
                 .authToken(authToken)
                 .refreshToken(refreshToken)
                 .loginServer(loginServer)
@@ -536,6 +537,10 @@ open class UserAccountManager protected constructor() {
                 .scope(scope)
                 .additionalOauthValues(additionalOauthValues)
                 .build()
+            if (!TextUtils.isEmpty(featureFlagsRaw)) {
+                userAccount.featureFlags = HashSet(featureFlagsRaw!!.split(",").dropLastWhile { it.isEmpty() })
+            }
+            userAccount
         }
     }
 
@@ -686,6 +691,13 @@ open class UserAccountManager protected constructor() {
         extras.putString(AuthenticatorService.KEY_BEACON_CHILD_CONSUMER_KEY, SalesforceSDKManager.encrypt(userAccount.beaconChildConsumerKey, encryptionKey))
         extras.putString(AuthenticatorService.KEY_BEACON_CHILD_CONSUMER_SECRET, SalesforceSDKManager.encrypt(userAccount.beaconChildConsumerSecret, encryptionKey))
         extras.putString(AuthenticatorService.KEY_SCOPE, SalesforceSDKManager.encrypt(userAccount.scope, encryptionKey))
+        val featureFlags = userAccount.featureFlags
+        if (featureFlags.isNotEmpty()) {
+            extras.putString(
+                AuthenticatorService.KEY_FEATURE_FLAGS,
+                SalesforceSDKManager.encrypt(TextUtils.join(",", featureFlags), encryptionKey)
+            )
+        }
 
         val additionalOauthKeys = SalesforceSDKManager.getInstance().additionalOauthKeys
         if (additionalOauthKeys != null && additionalOauthKeys.isNotEmpty()) {

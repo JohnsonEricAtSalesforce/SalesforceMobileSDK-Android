@@ -216,7 +216,8 @@ class RestClient(
         data[LOGIN_URL] = info.loginUrl.toString()
         data[IDENTITY_URL] = info.identityUrl.toString()
         data[INSTANCE_URL] = info.instanceUrl.toString()
-        data[USER_AGENT] = SalesforceSDKManager.getInstance().userAgent
+        val currentUser = SalesforceSDKManager.getInstance().userAccountManager.currentUser
+        data[USER_AGENT] = SalesforceSDKManager.getInstance().getUserAgent("", currentUser)
         data[COMMUNITY_ID] = info.communityId
         data[COMMUNITY_URL] = info.communityUrl
         return JSONObject(data as Map<*, *>)

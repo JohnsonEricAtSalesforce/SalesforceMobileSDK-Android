@@ -29,6 +29,7 @@ package com.salesforce.androidsdk.phonegap.app
 import android.app.Activity
 import android.content.Context
 import com.salesforce.androidsdk.app.SalesforceSDKManager
+import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.config.BootConfig
 import com.salesforce.androidsdk.mobilesync.app.MobileSyncSDKManager
 import com.salesforce.androidsdk.mobilesync.config.SyncsConfig
@@ -62,13 +63,17 @@ open class SalesforceHybridSDKManager protected constructor(
     }
 
     override fun getUserAgent(qualifier: String): String {
+        return getUserAgent(qualifier, null)
+    }
+
+    override fun getUserAgent(qualifier: String, user: UserAccount?): String {
         val config = BootConfig.getBootConfig(context)
         val updatedQualifier = if (config.isLocal) {
             qualifier + "Local"
         } else {
             qualifier + "Remote"
         }
-        return super.getUserAgent(updatedQualifier)
+        return super.getUserAgent(updatedQualifier, user)
     }
 
     override val appType: String

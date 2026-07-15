@@ -729,4 +729,69 @@ class UserAccountTest {
         response.put("locale", TEST_LOCALE)
         return OAuth2.IdServiceResponse(response)
     }
+
+    /**
+     * Tests that feature flags survive a toJson round-trip.
+     * Verifies that the FEATURE_FLAGS key is present in the serialized JSON and that the
+     * flags can be read back by manually parsing the JSON array (since the JSON constructor
+     * does not populate featureFlags — that path goes through AccountManager).
+     */
+    @Test
+    fun test_givenUserAccountWithFlags_whenToJson_thenFeatureFlagsKeyPresent() {
+        val account = createTestAccount()
+        account.featureFlags = hashSetOf("BW", "WD")
+
+        val json = account.toJson(createAdditionalOauthKeys())
+
+        Assert.assertTrue("JSON should contain FEATURE_FLAGS key", json.has(UserAccount.FEATURE_FLAGS))
+
+        // Verify both flags are serialized in the JSON array
+        val flagsArray = json.getJSONArray(UserAccount.FEATURE_FLAGS)
+        val serialized = HashSet<String>()
+        for (i in 0 until flagsArray.length()) {
+            serialized.add(flagsArray.getString(i))
+        }
+        Assert.assertTrue("Serialized flags should contain BW", serialized.contains("BW"))
+        Assert.assertTrue("Serialized flags should contain WD", serialized.contains("WD"))
+    }
+
+    /**
+     * Tests that a UserAccount built from JSON without a FEATURE_FLAGS key returns an empty set.
+     */
+    @Test
+    fun test_givenUserAccountJsonMissingFeatureFlags_whenFromJson_thenEmptySet() {
+        val testJSON = createTestAccountJSON()
+        // Confirm the helper JSON does not include FEATURE_FLAGS
+        Assert.assertFalse("Test JSON should not have FEATURE_FLAGS", testJSON.has(UserAccount.FEATURE_FLAGS))
+
+        val account = UserAccount(testJSON, "SalesforceSDKTest", createAdditionalOauthKeys())
+
+        Assert.assertNotNull("featureFlags should never be null", account.featureFlags)
+        Assert.assertTrue("featureFlags should be empty when key is absent", account.featureFlags.isEmpty())
+    }
+
+    /**
+     * Tests that setFeatureFlags/getFeatureFlags are symmetric.
+     */
+    @Test
+    fun test_givenUserAccount_whenSetFeatureFlags_thenGetFeatureFlagsReturnsSameValues() {
+        val account = createTestAccount()
+        val flags = hashSetOf("AA", "BB", "CC")
+        account.featureFlags = flags
+
+        Assert.assertEquals("getFeatureFlags should return the set values", flags, account.featureFlags)
+    }
+
+    /**
+     * Tests that assigning an empty set results in an empty set (Kotlin's non-null property
+     * type prevents assigning null; the Java setFeatureFlags(null) contract maps to empty here).
+     */
+    @Test
+    fun test_givenUserAccount_whenSetFeatureFlagsEmpty_thenEmptySet() {
+        val account = createTestAccount()
+        account.featureFlags = emptySet()
+
+        Assert.assertNotNull("featureFlags should never be null", account.featureFlags)
+        Assert.assertTrue("featureFlags should be empty", account.featureFlags.isEmpty())
+    }
 }
