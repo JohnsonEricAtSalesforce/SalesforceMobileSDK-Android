@@ -257,6 +257,28 @@ class RestClient(
         get() = _oAuthRefreshInterceptor
 
     /**
+     * Proactively refresh this client's access token through the SDK's standard, app-wide
+     * serialized refresh path (the same path used when a request returns 401).
+     *
+     * This is the single source of truth for token refresh: it serializes per-account so
+     * concurrent callers don't each POST, it reads the live refresh token, and it persists any
+     * rotated refresh token (Refresh Token Rotation) plus refreshed session ids (lightning/vf/
+     * content sids, csrf token) onto the [com.salesforce.androidsdk.accounts.UserAccount].
+     *
+     * Hybrid/WebView callers that previously performed their own token-endpoint request should
+     * call this instead, then read the updated values from `UserAccount` to set cookies —
+     * avoiding a second, parallel refresh that would rotate the refresh token out from under the
+     * SDK and trigger a spurious logout.
+     *
+     * @throws IOException on network failure or if the refresh token was revoked.
+     */
+    @Synchronized
+    @Throws(IOException::class)
+    fun refreshAccessToken() {
+        _oAuthRefreshInterceptor.refreshAccessToken()
+    }
+
+    /**
      * @return underlying OkHttpClient.Builder
      */
     @get:JvmName("getOkHttpClientBuilder")
