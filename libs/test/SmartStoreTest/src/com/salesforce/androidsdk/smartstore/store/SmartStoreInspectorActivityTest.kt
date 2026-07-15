@@ -28,6 +28,7 @@ package com.salesforce.androidsdk.smartstore.store
 
 import android.Manifest
 import android.content.Context
+import android.os.Build
 import android.widget.MultiAutoCompleteTextView
 import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
@@ -64,8 +65,13 @@ import java.util.concurrent.CountDownLatch
 @RunWith(AndroidJUnit4::class)
 @MediumTest
 class SmartStoreInspectorActivityTest {
+    // Pre-grant POST_NOTIFICATIONS so the permission dialog doesn't steal focus from the activity
     @get:Rule
-    val permissionRule: GrantPermissionRule = GrantPermissionRule.grant(Manifest.permission.POST_NOTIFICATIONS)
+    val permissionRule: GrantPermissionRule = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        GrantPermissionRule.grant(Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+        GrantPermissionRule.grant()
+    }
 
     companion object {
         private const val TEST_SOUP = "test_soup"

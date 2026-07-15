@@ -27,6 +27,7 @@
 package com.salesforce.androidsdk.smartstore.store
 
 import android.Manifest
+import android.os.Build
 import android.widget.AutoCompleteTextView
 import android.widget.Button
 import androidx.test.core.app.ActivityScenario
@@ -65,8 +66,13 @@ import java.util.concurrent.CountDownLatch
 @RunWith(AndroidJUnit4::class)
 @MediumTest
 class KeyValueStoreInspectorActivityTest {
+    // Pre-grant POST_NOTIFICATIONS so the permission dialog doesn't steal focus from the activity
     @get:Rule
-    val permissionRule: GrantPermissionRule = GrantPermissionRule.grant(Manifest.permission.POST_NOTIFICATIONS)
+    val permissionRule: GrantPermissionRule = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        GrantPermissionRule.grant(Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+        GrantPermissionRule.grant()
+    }
 
     private val STORE_1 = "store1"
     private val STORE_2 = "store2"
