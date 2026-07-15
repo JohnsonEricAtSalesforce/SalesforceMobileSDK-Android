@@ -30,6 +30,7 @@ import com.salesforce.androidsdk.auth.OAuth2.Companion.FRONTDOOR_URL_KEY
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
+import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.analytics.security.Encryptor
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.HttpAccess
@@ -1545,4 +1546,82 @@ class RestClientTest {
      * Helper class to hold name and id
      */
     private data class IdName(val id: String, val name: String)
+
+    // -------------------------------------------------------------------------
+    // User-Agent tests (W-23278653)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Verifies that getJSONCredentials() uses the clientInfo user (not currentUser) when
+     * building the userAgent field.
+     *
+     * Strategy: register a global flag and a per-user flag on a synthetic user whose
+     * orgId/userId differs from this restClient's clientInfo. getJSONCredentials() must
+     * include the global flag (always present) but exclude the other user's per-user flag.
+     * This proves the lookup uses clientInfo.orgId/userId, not currentUser — and always
+     * runs regardless of AccountManager state.
+     */
+    @Test
+    fun test_givenGlobalFlagAndOtherUserPerUserFlag_whenGetJSONCredentials_thenUserAgentContainsGlobalButNotOtherUserFlag() {
+        val globalFlag = "GZ"
+        val otherUserFlag = "OZ"
+        val otherUser = UserAccountBuilder.getInstance()
+            .authToken("tok").refreshToken("rtok")
+            .loginServer("https://login.salesforce.com")
+            .idUrl("https://login.salesforce.com/id/otherOrg2/otherUser2")
+            .instanceServer("https://cs1.salesforce.com")
+            .orgId("otherOrg2").userId("otherUser2")
+            .username("other2@example.com")
+            .accountName("other2 (SalesforceSDKTest)")
+            .build()
+
+        SalesforceSDKManager.getInstance().registerUsedAppFeature(globalFlag)
+        SalesforceSDKManager.getInstance().registerUsedAppFeature(otherUserFlag, otherUser)
+        try {
+            val creds = restClient.getJSONCredentials()
+            val userAgent = creds.getString("userAgent")
+            Assert.assertTrue(
+                "userAgent should contain global flag GZ",
+                userAgent.contains(globalFlag)
+            )
+            Assert.assertFalse(
+                "userAgent should NOT contain other user's per-user flag OZ",
+                userAgent.contains(otherUserFlag)
+            )
+        } finally {
+            SalesforceSDKManager.getInstance().unregisterUsedAppFeature(globalFlag)
+            SalesforceSDKManager.getInstance().unregisterUsedAppFeature(otherUserFlag, otherUser)
+        }
+    }
+
+    /**
+     * Verifies that getJSONCredentials() does NOT bleed per-user flags from
+     * an unrelated user into a different RestClient's credentials.
+     */
+    @Test
+    fun test_givenPerUserFlagOnDifferentUser_whenGetJSONCredentials_thenUserAgentExcludesFlag() {
+        val isolatedFlag = "W3"
+        // Build a synthetic user with IDs that differ from the test RestClient's clientInfo.
+        val otherUser = UserAccountBuilder.getInstance()
+            .authToken("tok").refreshToken("rtok")
+            .loginServer("https://login.salesforce.com")
+            .idUrl("https://login.salesforce.com/id/otherOrg/otherUser")
+            .instanceServer("https://cs1.salesforce.com")
+            .orgId("otherOrg").userId("otherUser")
+            .username("other@example.com")
+            .accountName("other (SalesforceSDKTest)")
+            .build()
+
+        SalesforceSDKManager.getInstance().registerUsedAppFeature(isolatedFlag, otherUser)
+        try {
+            val creds = restClient.getJSONCredentials()
+            val userAgent = creds.getString("userAgent")
+            Assert.assertFalse(
+                "userAgent for restClient should NOT contain flag registered for a different user",
+                userAgent.contains(isolatedFlag)
+            )
+        } finally {
+            SalesforceSDKManager.getInstance().unregisterUsedAppFeature(isolatedFlag, otherUser)
+        }
+    }
 }

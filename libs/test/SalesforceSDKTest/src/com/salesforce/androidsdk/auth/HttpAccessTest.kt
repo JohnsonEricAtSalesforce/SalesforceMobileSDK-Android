@@ -29,14 +29,20 @@ package com.salesforce.androidsdk.auth
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SmallTest
 import androidx.test.platform.app.InstrumentationRegistry
+import com.salesforce.androidsdk.accounts.UserAccount
+import com.salesforce.androidsdk.accounts.UserAccountBuilder
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.rest.RestRequest
 import com.salesforce.androidsdk.rest.RestResponse
 import com.salesforce.androidsdk.util.test.TestCredentials
+import okhttp3.Call
+import okhttp3.Connection
 import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.Response
@@ -45,8 +51,11 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Tests for HttpAccess.
@@ -166,4 +175,115 @@ class HttpAccessTest {
             userAgent!!.startsWith("SalesforceMobileSDK/" + SalesforceSDKManager.SDK_VERSION)
         )
     }
+
+    /**
+     * Verifies that UserAgentInterceptor with a UserAccount stamps per-user flags into
+     * the User-Agent header.
+     */
+    @Test
+    fun test_givenUserAgentInterceptorWithUser_whenIntercept_thenHeaderContainsUserFlags() {
+        val user = buildMinimalUserAccount("testOrg1", "testUser1")
+        SalesforceSDKManager.getInstance().registerUsedAppFeature("ZZ", user)
+        try {
+            val header = captureUserAgentHeader(HttpAccess.UserAgentInterceptor(user))
+            Assert.assertTrue(
+                "User-Agent header should contain per-user flag ZZ",
+                header!!.contains("ZZ")
+            )
+            Assert.assertTrue(
+                "User-Agent header should start with SalesforceMobileSDK/",
+                header.startsWith("SalesforceMobileSDK/")
+            )
+        } finally {
+            SalesforceSDKManager.getInstance().unregisterUsedAppFeature("ZZ", user)
+        }
+    }
+
+    /**
+     * Verifies that the no-arg UserAgentInterceptor still produces a valid User-Agent header
+     * (regression guard for the original constructor path).
+     */
+    @Test
+    fun test_givenUserAgentInterceptorNoArgs_whenIntercept_thenHeaderStartsWithSalesforceMobileSDK() {
+        val header = captureUserAgentHeader(HttpAccess.UserAgentInterceptor())
+        Assert.assertTrue(
+            "User-Agent header should start with SalesforceMobileSDK/",
+            header!!.startsWith("SalesforceMobileSDK/")
+        )
+    }
+
+    /**
+     * Verifies that a UserAgentInterceptor for user A does NOT include flags registered
+     * for user B (per-user isolation on the wire).
+     */
+    @Test
+    fun test_givenTwoUsers_whenInterceptorForUserA_thenHeaderExcludesUserBFlags() {
+        val userA = buildMinimalUserAccount("orgA", "userA")
+        val userB = buildMinimalUserAccount("orgB", "userB")
+        SalesforceSDKManager.getInstance().registerUsedAppFeature("UA", userA)
+        SalesforceSDKManager.getInstance().registerUsedAppFeature("UB", userB)
+        try {
+            val header = captureUserAgentHeader(HttpAccess.UserAgentInterceptor(userA))
+            Assert.assertTrue("User-Agent should contain userA flag UA", header!!.contains("UA"))
+            Assert.assertFalse("User-Agent should NOT contain userB flag UB", header.contains("UB"))
+        } finally {
+            SalesforceSDKManager.getInstance().unregisterUsedAppFeature("UA", userA)
+            SalesforceSDKManager.getInstance().unregisterUsedAppFeature("UB", userB)
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Runs the given interceptor against a dummy GET request and returns the
+     * User-Agent header that the interceptor stamped on the outgoing request.
+     * Uses a capturing chain so no real network call is made.
+     */
+    @Throws(IOException::class)
+    private fun captureUserAgentHeader(interceptor: HttpAccess.UserAgentInterceptor): String? {
+        val captured = AtomicReference<String?>()
+        val dummyUrl = HttpUrl.Builder().scheme("https").host("test.salesforce.com").build()
+        val original = Request.Builder().url(dummyUrl).build()
+
+        interceptor.intercept(object : Interceptor.Chain {
+            override fun request(): Request = original
+
+            override fun proceed(request: Request): Response {
+                captured.set(request.header("User-Agent"))
+                // Return a minimal non-null response to satisfy the chain contract.
+                return Response.Builder()
+                    .request(request)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .build()
+            }
+
+            override fun connection(): Connection? = null
+            override fun call(): Call = throw UnsupportedOperationException()
+            override fun connectTimeoutMillis(): Int = 0
+            override fun withConnectTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
+            override fun readTimeoutMillis(): Int = 0
+            override fun withReadTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
+            override fun writeTimeoutMillis(): Int = 0
+            override fun withWriteTimeout(timeout: Int, unit: TimeUnit): Interceptor.Chain = this
+        })
+
+        return captured.get()
+    }
+
+    private fun buildMinimalUserAccount(orgId: String, userId: String): UserAccount =
+        UserAccountBuilder.getInstance()
+            .authToken("tok")
+            .refreshToken("rtok")
+            .loginServer("https://login.salesforce.com")
+            .idUrl("https://login.salesforce.com/id/$orgId/$userId")
+            .instanceServer("https://cs1.salesforce.com")
+            .orgId(orgId)
+            .userId(userId)
+            .username("user_$userId@example.com")
+            .accountName("user_$userId (https://cs1.salesforce.com) (SalesforceSDKTest)")
+            .build()
 }

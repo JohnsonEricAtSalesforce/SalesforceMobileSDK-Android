@@ -28,6 +28,7 @@ package com.salesforce.androidsdk.auth
 
 import android.content.Context
 import android.net.ConnectivityManager
+import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import okhttp3.ConnectionSpec
 import okhttp3.Interceptor
@@ -154,9 +155,10 @@ open class HttpAccess(app: Context?, private var userAgent: String?) {
     class UserAgentInterceptor : Interceptor {
 
         private var userAgent: String? = null
+        private var user: UserAccount? = null
 
         /**
-         * Use this constructor to have the user agent computed for each call.
+         * Use this constructor to have the user agent computed for each call (falls back to current user).
          */
         constructor()
 
@@ -164,11 +166,18 @@ open class HttpAccess(app: Context?, private var userAgent: String?) {
             this.userAgent = userAgent
         }
 
+        constructor(user: UserAccount?) {
+            this.user = user
+        }
+
         @Throws(IOException::class)
         override fun intercept(chain: Interceptor.Chain): Response {
             val originalRequest = chain.request()
             val requestWithUserAgent = originalRequest.newBuilder()
-                .header(USER_AGENT, userAgent ?: SalesforceSDKManager.getInstance().userAgent)
+                .header(
+                    USER_AGENT,
+                    userAgent ?: SalesforceSDKManager.getInstance().getUserAgent("", user)
+                )
                 .build()
             return chain.proceed(requestWithUserAgent)
         }

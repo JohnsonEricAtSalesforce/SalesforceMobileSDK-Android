@@ -153,6 +153,10 @@ class RestClient(
             builder = httpAccessor.createNewClientBuilder()
             if (cacheKey != "unauthenticated") {
                 builder.addInterceptor(_oAuthRefreshInterceptor)
+                val user = SalesforceSDKManager.getInstance()
+                    .userAccountManager
+                    .getUserFromOrgAndUserId(clientInfo.orgId, clientInfo.userId)
+                builder.addNetworkInterceptor(HttpAccess.UserAgentInterceptor(user))
             }
             OK_CLIENT_BUILDERS[cacheKey] = builder
         }
@@ -216,8 +220,10 @@ class RestClient(
         data[LOGIN_URL] = info.loginUrl.toString()
         data[IDENTITY_URL] = info.identityUrl.toString()
         data[INSTANCE_URL] = info.instanceUrl.toString()
-        val currentUser = SalesforceSDKManager.getInstance().userAccountManager.currentUser
-        data[USER_AGENT] = SalesforceSDKManager.getInstance().getUserAgent("", currentUser)
+        val user = SalesforceSDKManager.getInstance()
+            .userAccountManager
+            .getUserFromOrgAndUserId(info.orgId, info.userId)
+        data[USER_AGENT] = SalesforceSDKManager.getInstance().getUserAgent("", user)
         data[COMMUNITY_ID] = info.communityId
         data[COMMUNITY_URL] = info.communityUrl
         return JSONObject(data as Map<*, *>)
