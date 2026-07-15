@@ -97,7 +97,7 @@ open class SmartStoreTest : SmartStoreTestCase() {
 
     @Test
     fun testSQLCipherVersion() {
-        Assert.assertEquals("Wrong sqlcipher version", "4.16.0 community", store.getSQLCipherVersion())
+        Assert.assertEquals("Wrong sqlcipher version", "4.17.0 community", store.getSQLCipherVersion())
     }
 
     @Test
