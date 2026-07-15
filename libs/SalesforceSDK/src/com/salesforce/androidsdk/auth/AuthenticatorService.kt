@@ -42,7 +42,6 @@ import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.OAuth2.Companion.CLIENT_BLOCKED_RETRY_ERROR
 import com.salesforce.androidsdk.auth.OAuth2.OAuthFailedException
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
-import java.net.URI
 
 /**
  * The service used for taking care of authentication for a Salesforce-based application.
@@ -89,9 +88,11 @@ open class AuthenticatorService : Service() {
 
             try {
                 val addlParamsMap = originalUserAccount.additionalOauthValues
+                val tokenServer = OAuth2.overrideLoginServerIfNeeded(originalUserAccount)
+                SalesforceSDKLogger.i(TAG, "Initiating token refresh to host: " + tokenServer.host)
                 val tr = OAuth2.refreshAuthToken(
                     HttpAccess.DEFAULT,
-                    URI(originalUserAccount.loginServer),
+                    tokenServer,
                     originalUserAccount.clientIdForRefresh!!,
                     originalUserAccount.refreshToken!!,
                     addlParamsMap

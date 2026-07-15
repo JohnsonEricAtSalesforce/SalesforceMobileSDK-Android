@@ -30,6 +30,7 @@ import android.net.Uri
 import android.text.TextUtils
 import androidx.annotation.VisibleForTesting
 import androidx.annotation.WorkerThread
+import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.rest.RestResponse
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
@@ -1017,20 +1018,88 @@ class OAuth2 {
         }
 
         /**
+         * Selects the server URI to target for token endpoint requests.
+         * Precedence: communityUrl > instanceServer > loginServer.
+         * instanceServer is populated only after the first token response, so a null instanceServer
+         * naturally identifies the code-exchange path which must target the login pool.
+         *
+         * @param loginServer Login server URL string (fallback, never null).
+         * @param instanceServer Instance server URL string, or null if not yet known.
+         * @param communityId Community ID, or null if not a community user.
+         * @param communityUrl Community URL string, or null if not a community user.
+         * @return The URI to use as the token endpoint base.
+         */
+        @JvmStatic
+        fun overrideLoginServerIfNeeded(
+            loginServer: String,
+            instanceServer: String?,
+            communityId: String?,
+            communityUrl: String?
+        ): URI {
+            if (!communityId.isNullOrEmpty() && !communityUrl.isNullOrEmpty()) {
+                try {
+                    return URI(communityUrl)
+                } catch (e: URISyntaxException) {
+                    SalesforceSDKLogger.w(TAG, "Invalid community URL, falling through to instanceServer", e)
+                }
+            }
+            if (!instanceServer.isNullOrEmpty()) {
+                try {
+                    return URI(instanceServer)
+                } catch (e: URISyntaxException) {
+                    SalesforceSDKLogger.w(TAG, "Invalid instance server URL, falling through to loginServer", e)
+                }
+            }
+            try {
+                return URI(loginServer)
+            } catch (e: URISyntaxException) {
+                throw IllegalArgumentException("Invalid login server URL: $loginServer", e)
+            }
+        }
+
+        /**
+         * Selects the server URI to target for token endpoint requests for the given user account.
+         * Precedence: communityUrl > instanceServer > loginServer.
+         *
+         * @param userAccount User account whose server fields are used.
+         * @return The URI to use as the token endpoint base.
+         */
+        @JvmStatic
+        fun overrideLoginServerIfNeeded(userAccount: UserAccount): URI {
+            return overrideLoginServerIfNeeded(
+                userAccount.loginServer!!,
+                userAccount.instanceServer,
+                userAccount.communityId,
+                userAccount.communityUrl
+            )
+        }
+
+        /**
          * Fetches an OpenID token from the Salesforce backend.
          *
          * @param loginServer Login server.
+         * @param instanceServer Instance server, or null if not yet known.
          * @param clientId Client ID.
+         * @param communityId Community ID, or null if not a community user.
+         * @param communityUrl Community URL, or null if not a community user.
          * @param refreshToken Refresh token.
          * @return OpenID token.
          */
         @JvmStatic
-        fun getOpenIDToken(loginServer: String, clientId: String, refreshToken: String): String? {
+        fun getOpenIDToken(
+            loginServer: String,
+            instanceServer: String?,
+            clientId: String,
+            communityId: String?,
+            communityUrl: String?,
+            refreshToken: String
+        ): String? {
             var idToken: String? = null
             try {
+                val tokenServer = overrideLoginServerIfNeeded(loginServer, instanceServer, communityId, communityUrl)
                 val tr = refreshAuthToken(
                     HttpAccess.DEFAULT,
-                    URI(loginServer), clientId, refreshToken, null
+                    tokenServer, clientId, refreshToken, null
                 )
                 idToken = tr.idToken
             } catch (e: Exception) {

@@ -734,9 +734,11 @@ class ClientManager(
             // value avoids POSTing a stale token that would fail with invalid_grant.
             val currentRefreshToken = originalUserAccount.refreshToken
             try {
+                val tokenServer = OAuth2.overrideLoginServerIfNeeded(originalUserAccount)
+                SalesforceSDKLogger.i(TAG, "Initiating token refresh to host: " + tokenServer.host)
                 val tr = OAuth2.refreshAuthToken(
                     HttpAccess.DEFAULT!!,
-                    URI(originalUserAccount.loginServer!!), originalUserAccount.clientIdForRefresh!!, currentRefreshToken!!, addlParamsMap
+                    tokenServer, originalUserAccount.clientIdForRefresh!!, currentRefreshToken!!, addlParamsMap
                 )
 
                 if (tr.authToken == null) {

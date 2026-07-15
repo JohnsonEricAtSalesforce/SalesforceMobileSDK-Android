@@ -578,7 +578,7 @@ class OAuth2Test {
     fun testGetOpenIDToken() {
         val openIdToken = OAuth2.getOpenIDToken(
             TestCredentials.LOGIN_URL!!,
-            TestCredentials.CLIENT_ID!!, TestCredentials.REFRESH_TOKEN!!
+            null, TestCredentials.CLIENT_ID!!, null, null, TestCredentials.REFRESH_TOKEN!!
         )
         Assert.assertNotNull("OpenID token should not be null", openIdToken)
     }
