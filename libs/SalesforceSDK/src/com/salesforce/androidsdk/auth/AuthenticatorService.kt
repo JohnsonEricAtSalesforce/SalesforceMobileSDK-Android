@@ -77,7 +77,7 @@ open class AuthenticatorService : Service() {
 
         @Throws(NetworkErrorException::class)
         override fun getAuthToken(
-            response: AccountAuthenticatorResponse,
+            response: AccountAuthenticatorResponse?,
             account: Account,
             authTokenType: String,
             options: Bundle?
@@ -130,7 +130,7 @@ open class AuthenticatorService : Service() {
             }
         }
 
-        private fun makeAuthIntentBundle(response: AccountAuthenticatorResponse, options: Bundle?): Bundle {
+        private fun makeAuthIntentBundle(response: AccountAuthenticatorResponse?, options: Bundle?): Bundle {
             val reply = Bundle()
             val i = Intent(context, SalesforceSDKManager.getInstance().loginActivityClass)
             i.setPackage(context.packageName)
