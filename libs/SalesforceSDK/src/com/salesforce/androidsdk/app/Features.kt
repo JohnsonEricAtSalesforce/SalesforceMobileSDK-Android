@@ -46,4 +46,5 @@ object Features {
     const val FEATURE_QR_CODE_LOGIN = "QR"
     const val FEATURE_WELCOME_DISCOVERY_LOGIN = "WD"
     const val FEATURE_RTR = "RT"
+    const val FEATURE_DPOP = "DP"
 }

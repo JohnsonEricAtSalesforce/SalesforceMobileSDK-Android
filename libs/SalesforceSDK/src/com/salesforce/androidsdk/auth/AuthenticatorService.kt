@@ -94,7 +94,8 @@ open class AuthenticatorService : Service() {
                     tokenServer,
                     originalUserAccount.clientIdForRefresh!!,
                     originalUserAccount.refreshToken!!,
-                    addlParamsMap
+                    addlParamsMap,
+                    originalUserAccount.credentialsIdentifier
                 )
 
                 val updatedUserAccount = UserAccountBuilder.getInstance()
@@ -206,6 +207,8 @@ open class AuthenticatorService : Service() {
         const val KEY_BEACON_CHILD_CONSUMER_SECRET = "auto_installed_app_org_consumer_secret"
         const val KEY_SCOPE = "scope"
         const val KEY_FEATURE_FLAGS = "feature_flags"
+        const val KEY_CREDENTIALS_IDENTIFIER = "credentialsIdentifier"
+        const val KEY_TOKEN_TYPE = "tokenType"
 
         private const val TAG = "AuthenticatorService"
 

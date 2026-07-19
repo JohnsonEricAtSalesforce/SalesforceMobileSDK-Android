@@ -32,9 +32,14 @@ import androidx.annotation.VisibleForTesting
 import androidx.annotation.WorkerThread
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.app.SalesforceSDKManager
+import com.salesforce.androidsdk.auth.dpop.DPoPKeyManager
+import com.salesforce.androidsdk.auth.dpop.DPoPNonceCache
+import com.salesforce.androidsdk.auth.dpop.DPoPProofBuilder
+import com.salesforce.androidsdk.auth.dpop.DPoPURLHelper
 import com.salesforce.androidsdk.rest.RestResponse
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
 import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
 import org.json.JSONObject
@@ -42,6 +47,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URISyntaxException
+import java.security.KeyPair
 import java.text.DateFormat
 import java.text.ParseException
 import java.text.SimpleDateFormat
@@ -346,6 +352,8 @@ class OAuth2 {
         @JvmField var beaconChildConsumerKey: String? = null
         @JvmField var beaconChildConsumerSecret: String? = null
         @JvmField var scope: String? = null
+        @JvmField var tokenType: String? = null
+        @JvmField var credentialsIdentifier: String? = null
 
         /**
          * Parameterized constructor built from params during user agent login flow.
@@ -391,6 +399,7 @@ class OAuth2 {
                 parentSid = callbackUrlParams[PARENT_SID]
                 tokenFormat = callbackUrlParams.getOrDefault(TOKEN_FORMAT, "")
                 scope = callbackUrlParams[SCOPE]
+                tokenType = callbackUrlParams[TOKEN_TYPE]
 
                 // NB: beacon apps not supported with user agent flow so no beacon child fields expected
 
@@ -476,6 +485,7 @@ class OAuth2 {
                     beaconChildConsumerSecret = parsedResponse.getString(LEGACY_BEACON_CHILD_CONSUMER_SECRET)
                 }
                 scope = parsedResponse.optString(SCOPE)
+                tokenType = parsedResponse.optString(TOKEN_TYPE, null)
 
             } catch (e: Exception) {
                 SalesforceSDKLogger.w(TAG, "Could not parse token endpoint response", e)
@@ -567,6 +577,8 @@ class OAuth2 {
         private const val RETURL = "retURL"
         @JvmField internal val AUTHORIZATION = "Authorization"
         private const val BEARER = "Bearer "
+        private const val TOKEN_TYPE = "token_type"
+        private const val DPOP = "DPoP"
         private const val ASSERTION = "assertion"
         private const val JWT_BEARER = "urn:ietf:params:oauth:grant-type:jwt-bearer"
         @JvmField internal val OAUTH_AUTH_PATH = "/services/oauth2/authorize"
@@ -829,9 +841,13 @@ class OAuth2 {
 
         /**
          * An internal, testable Salesforce Mobile SDK overload of
-         * [exchangeCode].
+         * [exchangeCode]. Accepts an optional credentials identifier so a DPoP
+         * proof can be attached when DPoP is enabled.
+         *
+         * @param credentialsIdentifier Identifier used to look up the DPoP keypair, or null.
          */
         @JvmStatic
+        @JvmOverloads
         @Throws(OAuthFailedException::class, IOException::class)
         fun exchangeCode(
             httpAccessor: HttpAccess,
@@ -840,7 +856,8 @@ class OAuth2 {
             code: String,
             codeVerifier: String,
             callbackUrl: String,
-            salesforceSdkManager: SalesforceSDKManager
+            salesforceSdkManager: SalesforceSDKManager,
+            credentialsIdentifier: String? = null
         ): TokenEndpointResponse {
             val builder = FormBody.Builder()
             val useHybridAuthentication = SalesforceSDKManager.getInstance().useHybridAuthentication
@@ -851,7 +868,7 @@ class OAuth2 {
             builder.add(CODE, code)
             builder.add(CODE_VERIFIER, codeVerifier)
             builder.add(REDIRECT_URI, callbackUrl)
-            return makeTokenEndpointRequest(httpAccessor, loginServer, builder, salesforceSdkManager)
+            return makeTokenEndpointRequest(httpAccessor, loginServer, builder, salesforceSdkManager, credentialsIdentifier)
         }
 
         /**
@@ -867,13 +884,15 @@ class OAuth2 {
          * @throws IOException See [IOException].
          */
         @JvmStatic
+        @JvmOverloads
         @Throws(OAuthFailedException::class, IOException::class)
         fun refreshAuthToken(
             httpAccessor: HttpAccess?,
             loginServer: URI,
             clientId: String,
             refreshToken: String,
-            addlParams: Map<String, String>?
+            addlParams: Map<String, String>?,
+            credentialsIdentifier: String? = null
         ): TokenEndpointResponse {
             val builder = FormBody.Builder()
             val useHybridAuthentication = SalesforceSDKManager.getInstance().useHybridAuthentication
@@ -890,7 +909,7 @@ class OAuth2 {
                     }
                 }
             }
-            return makeTokenEndpointRequest(httpAccessor!!, loginServer, builder, SalesforceSDKManager.getInstance())
+            return makeTokenEndpointRequest(httpAccessor!!, loginServer, builder, SalesforceSDKManager.getInstance(), credentialsIdentifier)
         }
 
         /**
@@ -952,32 +971,70 @@ class OAuth2 {
          * @return IdServiceResponse instance.
          * @throws IOException See [IOException].
          */
+        /**
+         * Calls the identity service to determine the username of the user and the mobile policy, given
+         * their identity service ID and an access token. When the token is DPoP-bound, attaches a DPoP
+         * proof header.
+         *
+         * @param httpAccessor HttpAccessor instance.
+         * @param identityServiceIdUrl Identity service URL.
+         * @param authToken Access token.
+         * @param tokenType Token type (e.g. "Bearer" or "DPoP"), or null for default Bearer.
+         * @param credentialsIdentifier Identifier used to look up the DPoP keypair, or null.
+         * @return IdServiceResponse instance.
+         * @throws IOException See [IOException].
+         */
         @JvmStatic
+        @JvmOverloads
         @Throws(IOException::class)
         fun callIdentityService(
             httpAccessor: HttpAccess,
             identityServiceIdUrl: String,
-            authToken: String
+            authToken: String,
+            tokenType: String? = null,
+            credentialsIdentifier: String? = null
         ): IdServiceResponse {
             val builder = Request.Builder().url(identityServiceIdUrl).get()
-            addAuthorizationHeader(builder, authToken)
+            addAuthorizationHeader(builder, authToken, tokenType)
+            if (DPOP == tokenType && credentialsIdentifier != null && SalesforceSDKManager.getInstance().useDPoP) {
+                try {
+                    val htu = DPoPURLHelper.canonicalize(identityServiceIdUrl)
+                    val alias = DPoPKeyManager.aliasForCredentialsIdentifier(credentialsIdentifier)
+                    val keyPair = DPoPKeyManager.generateOrLoadKeyPair(alias)
+                    val nonce = DPoPNonceCache.get(credentialsIdentifier, identityServiceIdUrl.toHttpUrl().host)
+                    val proof = DPoPProofBuilder.buildProof("GET", htu, keyPair, nonce, authToken)
+                    builder.header(DPOP, proof)
+                } catch (e: Exception) {
+                    SalesforceSDKLogger.e(TAG, "Failed to attach DPoP header, proceeding without it", e)
+                }
+            }
+            // Nonce failures on the identity endpoint fall through to SFOAuthSessionRefresher /
+            // OAuthRefreshInterceptor, which re-enters the token endpoint where nonce harvest+retry
+            // already lives. Salesforce only issues DPoP-Nonce on token-endpoint responses, so
+            // inline harvest+retry here would never fire against the server in practice.
             val request = builder.build()
             val response = httpAccessor.okHttpClient.newCall(request).execute()
             return IdServiceResponse(response)
         }
 
         /**
-         * Adds the authorization header to request builder.
+         * Adds the authorization header to the request builder, choosing the
+         * scheme based on the token type. When [tokenType] equals "DPoP", the
+         * DPoP scheme is used; otherwise Bearer is used.
          *
          * @param builder Builder instance.
          * @param authToken Access token.
+         * @param tokenType Token type (e.g. "Bearer" or "DPoP"), or null for default Bearer.
          */
         @JvmStatic
-        fun addAuthorizationHeader(builder: Request.Builder, authToken: String): Request.Builder {
-            return builder.header(AUTHORIZATION, BEARER + authToken)
+        @JvmOverloads
+        fun addAuthorizationHeader(builder: Request.Builder, authToken: String, tokenType: String? = null): Request.Builder {
+            val scheme = if (DPOP == tokenType) "$DPOP " else BEARER
+            return builder.header(AUTHORIZATION, scheme + authToken)
         }
 
         @JvmStatic
+        @JvmOverloads
         @VisibleForTesting
         @WorkerThread
         @Throws(OAuthFailedException::class, IOException::class)
@@ -985,7 +1042,8 @@ class OAuth2 {
             httpAccessor: HttpAccess,
             loginServer: URI,
             formBodyBuilder: FormBody.Builder,
-            salesforceSdkManager: SalesforceSDKManager
+            salesforceSdkManager: SalesforceSDKManager,
+            credentialsIdentifier: String? = null
         ): TokenEndpointResponse {
             val sb = StringBuilder(loginServer.toString())
             sb.append(OAUTH_TOKEN_PATH)
@@ -1004,13 +1062,68 @@ class OAuth2 {
             }
 
             val refreshPath = sb.toString()
+            val tokenHost = refreshPath.toHttpUrl().host
             val body = formBodyBuilder.build()
-            val request = Request.Builder().url(refreshPath).post(body).build()
-            val response = httpAccessor.okHttpClient.newCall(request).execute()
+            val requestBuilder = Request.Builder().url(refreshPath).post(body)
+
+            if (credentialsIdentifier != null && salesforceSdkManager.useDPoP) {
+                try {
+                    val htu = DPoPURLHelper.canonicalize(refreshPath)
+                    val alias = DPoPKeyManager.aliasForCredentialsIdentifier(credentialsIdentifier)
+                    val keyPair = DPoPKeyManager.generateOrLoadKeyPair(alias)
+                    val nonce = DPoPNonceCache.get(credentialsIdentifier, tokenHost)
+                    val proof = DPoPProofBuilder.buildProof("POST", htu, keyPair, nonce, null)
+                    requestBuilder.header(DPOP, proof)
+                } catch (e: Exception) {
+                    SalesforceSDKLogger.e(TAG, "Failed to attach DPoP header, proceeding without it", e)
+                }
+            }
+
+            val request = requestBuilder.build()
+            var response = httpAccessor.okHttpClient.newCall(request).execute()
+
+            // Harvest nonce from every response (proactive caching for next call).
+            if (credentialsIdentifier != null && salesforceSdkManager.useDPoP) {
+                val responseNonce = response.header("DPoP-Nonce")
+                if (!TextUtils.isEmpty(responseNonce)) {
+                    DPoPNonceCache.store(credentialsIdentifier, tokenHost, responseNonce!!)
+                }
+            }
+
+            // Nonce challenge: server requires a nonce. Retry once with the harvested nonce.
+            if (credentialsIdentifier != null && salesforceSdkManager.useDPoP && isNonceChallenge(response)) {
+                response.close()
+                try {
+                    val htu = DPoPURLHelper.canonicalize(refreshPath)
+                    val alias = DPoPKeyManager.aliasForCredentialsIdentifier(credentialsIdentifier)
+                    val keyPair = DPoPKeyManager.generateOrLoadKeyPair(alias)
+                    val nonce = DPoPNonceCache.get(credentialsIdentifier, tokenHost)
+                    val proof = DPoPProofBuilder.buildProof("POST", htu, keyPair, nonce, null)
+                    val retryRequest = request.newBuilder().header(DPOP, proof).build()
+                    response = httpAccessor.okHttpClient.newCall(retryRequest).execute()
+                } catch (e: Exception) {
+                    SalesforceSDKLogger.e(TAG, "Failed to attach DPoP header on nonce retry", e)
+                }
+            }
+
             return if (response.isSuccessful) {
-                TokenEndpointResponse(response)
+                val tokenResponse = TokenEndpointResponse(response)
+                tokenResponse.credentialsIdentifier = credentialsIdentifier
+                tokenResponse
             } else {
                 throw OAuthFailedException(TokenErrorResponse(response), response.code)
+            }
+        }
+
+        private fun isNonceChallenge(response: Response): Boolean {
+            val code = response.code
+            if (code != HttpURLConnection.HTTP_BAD_REQUEST && code != HttpURLConnection.HTTP_UNAUTHORIZED) {
+                return false
+            }
+            return try {
+                response.peekBody(512).string().contains("use_dpop_nonce")
+            } catch (e: IOException) {
+                false
             }
         }
 

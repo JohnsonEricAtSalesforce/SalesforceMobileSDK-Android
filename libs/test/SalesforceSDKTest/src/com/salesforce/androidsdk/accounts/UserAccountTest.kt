@@ -95,6 +95,8 @@ class UserAccountTest {
         const val TEST_BEACON_CHILD_CONSUMER_KEY = "test-beacon-child-consumer-key"
         const val TEST_BEACON_CHILD_CONSUMER_SECRET = "test-beacon-child-consumer-secret"
         const val TEST_SCOPE = "api web openid refresh_token"
+        const val TEST_CREDENTIALS_IDENTIFIER = "test-credentials-identifier-uuid"
+        const val TEST_TOKEN_TYPE = "DPoP"
 
         // other user
         const val TEST_ORG_ID_2 = "test_org_id_2"
@@ -146,6 +148,8 @@ class UserAccountTest {
                 .beaconChildConsumerKey(TEST_BEACON_CHILD_CONSUMER_KEY)
                 .beaconChildConsumerSecret(TEST_BEACON_CHILD_CONSUMER_SECRET)
                 .scope(TEST_SCOPE)
+                .credentialsIdentifier(TEST_CREDENTIALS_IDENTIFIER)
+                .tokenType(TEST_TOKEN_TYPE)
                 .additionalOauthValues(createAdditionalOauthValues())
                 .build()
         }
@@ -505,6 +509,8 @@ class UserAccountTest {
         obj.put(UserAccount.SCOPE, TEST_SCOPE)
         obj.put(UserAccount.BEACON_CHILD_CONSUMER_KEY, TEST_BEACON_CHILD_CONSUMER_KEY)
         obj.put(UserAccount.BEACON_CHILD_CONSUMER_SECRET, TEST_BEACON_CHILD_CONSUMER_SECRET)
+        obj.put(UserAccount.CREDENTIALS_IDENTIFIER, TEST_CREDENTIALS_IDENTIFIER)
+        obj.put(UserAccount.TOKEN_TYPE, TEST_TOKEN_TYPE)
         obj = MapUtil.addMapToJSONObject(createAdditionalOauthValues(), createAdditionalOauthKeys(), obj)!!
         return obj
     }
@@ -551,6 +557,8 @@ class UserAccountTest {
         bundle.putString(UserAccount.BEACON_CHILD_CONSUMER_KEY, TEST_BEACON_CHILD_CONSUMER_KEY)
         bundle.putString(UserAccount.BEACON_CHILD_CONSUMER_SECRET, TEST_BEACON_CHILD_CONSUMER_SECRET)
         bundle.putString(UserAccount.SCOPE, TEST_SCOPE)
+        bundle.putString(UserAccount.CREDENTIALS_IDENTIFIER, TEST_CREDENTIALS_IDENTIFIER)
+        bundle.putString(UserAccount.TOKEN_TYPE, TEST_TOKEN_TYPE)
         bundle = MapUtil.addMapToBundle(createAdditionalOauthValues(), createAdditionalOauthKeys(), bundle)!!
         return bundle
     }

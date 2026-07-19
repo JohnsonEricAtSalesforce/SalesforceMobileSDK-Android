@@ -30,11 +30,15 @@ import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.HttpAccess
 import com.salesforce.androidsdk.auth.OAuth2
+import com.salesforce.androidsdk.auth.dpop.DPoPKeyManager
+import com.salesforce.androidsdk.auth.dpop.DPoPNonceCache
+import com.salesforce.androidsdk.auth.dpop.DPoPProofBuilder
+import com.salesforce.androidsdk.auth.dpop.DPoPURLHelper
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager
 import com.salesforce.androidsdk.util.SalesforceSDKLogger
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -55,16 +59,40 @@ import java.util.HashMap
 class RestClient(
     initialClientInfo: ClientInfo,
     initialAuthToken: String?,
+    initialTokenType: String?,
+    initialCredentialsIdentifier: String?,
     private val httpAccessor: HttpAccess,
     private val authTokenProvider: AuthTokenProvider?
 ) {
+
+    /**
+     * Constructs a RestClient with the given clientInfo, authToken, httpAccessor and authTokenProvider.
+     */
+    constructor(
+        clientInfo: ClientInfo,
+        authToken: String?,
+        httpAccessor: HttpAccess,
+        authTokenProvider: AuthTokenProvider?
+    ) : this(clientInfo, authToken, null, null, httpAccessor, authTokenProvider)
+
+    /**
+     * Constructs a RestClient with the given clientInfo, authToken, tokenType, httpAccessor and
+     * authTokenProvider. The tokenType determines the Authorization header scheme (e.g. "Bearer" or "DPoP").
+     */
+    constructor(
+        clientInfo: ClientInfo,
+        authToken: String?,
+        tokenType: String?,
+        httpAccessor: HttpAccess,
+        authTokenProvider: AuthTokenProvider?
+    ) : this(clientInfo, authToken, tokenType, null, httpAccessor, authTokenProvider)
 
     private var _oAuthRefreshInterceptor: OAuthRefreshInterceptor
     private var _okHttpClientBuilder: OkHttpClient.Builder
     private var _okHttpClient: OkHttpClient
 
     init {
-        _oAuthRefreshInterceptor = initOAuthRefreshInterceptor(initialClientInfo, initialAuthToken)
+        _oAuthRefreshInterceptor = initOAuthRefreshInterceptor(initialClientInfo, initialAuthToken, initialTokenType, initialCredentialsIdentifier)
         _okHttpClientBuilder = initOkHttpClientBuilder()
         _okHttpClient = initOkHttpClient()
     }
@@ -78,6 +106,12 @@ class RestClient(
         fun getNewAuthToken(): String?
         fun getRefreshToken(): String?
         fun getLastRefreshTime(): Long
+
+        /**
+         * @return The token type from the most recent refresh (e.g. "Bearer"
+         * or "DPoP"), or null if not yet known or the server did not specify.
+         */
+        fun getTokenType(): String? = null
     }
 
     /**
@@ -126,13 +160,18 @@ class RestClient(
      * Sets the OAuthRefreshInterceptor associated with this user account.
      */
     @Synchronized
-    private fun initOAuthRefreshInterceptor(clientInfo: ClientInfo, authToken: String?): OAuthRefreshInterceptor {
+    private fun initOAuthRefreshInterceptor(
+        clientInfo: ClientInfo,
+        authToken: String?,
+        tokenType: String?,
+        credentialsIdentifier: String?
+    ): OAuthRefreshInterceptor {
         val cacheKey = computeCacheKey(clientInfo.orgId, clientInfo.userId)
         var interceptor = OAUTH_REFRESH_INTERCEPTORS[cacheKey]
 
         // If none cached, create new one
         if (interceptor == null) {
-            interceptor = OAuthRefreshInterceptor(clientInfo, authToken, authTokenProvider)
+            interceptor = OAuthRefreshInterceptor(clientInfo, authToken, tokenType, credentialsIdentifier, authTokenProvider)
             OAUTH_REFRESH_INTERCEPTORS[cacheKey] = interceptor
         }
         return interceptor
@@ -604,10 +643,34 @@ class RestClient(
     class OAuthRefreshInterceptor(
         @JvmField var clientInfo: ClientInfo,
         authToken: String?,
+        tokenType: String?,
+        credentialsIdentifier: String?,
         private val authTokenProvider: AuthTokenProvider?
     ) : Interceptor {
 
         private var authToken: String? = authToken
+        @JvmField var tokenType: String? = tokenType
+        @JvmField var credentialsIdentifier: String? = credentialsIdentifier
+
+        /**
+         * Constructs an interceptor with the given clientInfo, authToken and authTokenProvider.
+         */
+        constructor(
+            clientInfo: ClientInfo,
+            authToken: String?,
+            authTokenProvider: AuthTokenProvider?
+        ) : this(clientInfo, authToken, null, null, authTokenProvider)
+
+        /**
+         * Overload that accepts a token type, used to select between the Bearer
+         * and DPoP Authorization header schemes.
+         */
+        constructor(
+            clientInfo: ClientInfo,
+            authToken: String?,
+            tokenType: String?,
+            authTokenProvider: AuthTokenProvider?
+        ) : this(clientInfo, authToken, tokenType, null, authTokenProvider)
 
         @Throws(IOException::class)
         override fun intercept(chain: Interceptor.Chain): Response {
@@ -711,7 +774,26 @@ class RestClient(
         private fun buildAuthenticatedRequest(request: Request): Request {
             val builder = request.newBuilder()
             setAuthHeader(builder)
+            attachDPoPProofIfNeeded(builder, request.method, request.url.toString())
             return builder.build()
+        }
+
+        private fun attachDPoPProofIfNeeded(builder: Request.Builder, method: String, url: String) {
+            if (DPOP != tokenType) return
+            if (!SalesforceSDKManager.getInstance().useDPoP) return
+            val credId = credentialsIdentifier
+            if (credId.isNullOrEmpty()) return
+            try {
+                val htu = DPoPURLHelper.canonicalize(url)
+                val host = url.toHttpUrl().host
+                val alias = DPoPKeyManager.aliasForCredentialsIdentifier(credId)
+                val keyPair = DPoPKeyManager.generateOrLoadKeyPair(alias)
+                val nonce = DPoPNonceCache.get(credId, host)
+                val proof = DPoPProofBuilder.buildProof(method, htu, keyPair, nonce, authToken)
+                builder.header(DPOP, proof)
+            } catch (e: Exception) {
+                SalesforceSDKLogger.e(TAG, "Failed to attach DPoP proof", e)
+            }
         }
 
         /**
@@ -730,7 +812,7 @@ class RestClient(
         private fun setAuthHeader(builder: Request.Builder) {
             val token = authToken
             if (token != null) { // Add Auth token to each request if authorized
-                OAuth2.addAuthorizationHeader(builder, token)
+                OAuth2.addAuthorizationHeader(builder, token, tokenType)
             }
         }
 
@@ -742,6 +824,18 @@ class RestClient(
         @Synchronized
         private fun setAuthToken(newAuthToken: String?) {
             authToken = newAuthToken
+        }
+
+        /**
+         * Change authToken and tokenType for this RestClient
+         *
+         * @param newAuthToken
+         * @param newTokenType
+         */
+        @Synchronized
+        private fun setAuthToken(newAuthToken: String?, newTokenType: String?) {
+            authToken = newAuthToken
+            tokenType = newTokenType
         }
 
         /**
@@ -778,8 +872,8 @@ class RestClient(
                     throw RefreshTokenRevokedException("Could not refresh token")
                 }
 
-                // Use new token
-                setAuthToken(newAuthToken)
+                // Use new token (and token type, if available)
+                setAuthToken(newAuthToken, authTokenProvider.getTokenType())
 
                 // Check if the instanceUrl changed
                 val instanceUrl = authTokenProvider.getInstanceUrl()
@@ -838,6 +932,7 @@ class RestClient(
         private const val COMMUNITY_ID = "communityId"
         private const val COMMUNITY_URL = "communityUrl"
         private const val TAG = "RestClient"
+        private const val DPOP = "DPoP"
 
         private val OAUTH_REFRESH_INTERCEPTORS = HashMap<String, OAuthRefreshInterceptor>()
         private val OK_CLIENT_BUILDERS = HashMap<String, OkHttpClient.Builder>()

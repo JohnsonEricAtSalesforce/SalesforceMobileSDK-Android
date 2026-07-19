@@ -477,6 +477,8 @@ open class UserAccountManager protected constructor() {
         val beaconChildConsumerKey = decryptUserData(account, AuthenticatorService.KEY_BEACON_CHILD_CONSUMER_KEY, encryptionKey)
         val beaconChildConsumerSecret = decryptUserData(account, AuthenticatorService.KEY_BEACON_CHILD_CONSUMER_SECRET, encryptionKey)
         val scope = decryptUserData(account, AuthenticatorService.KEY_SCOPE, encryptionKey)
+        val credentialsIdentifier = decryptUserData(account, AuthenticatorService.KEY_CREDENTIALS_IDENTIFIER, encryptionKey)
+        val tokenType = decryptUserData(account, AuthenticatorService.KEY_TOKEN_TYPE, encryptionKey)
         val featureFlagsRaw = decryptUserData(account, AuthenticatorService.KEY_FEATURE_FLAGS, encryptionKey)
 
         var additionalOauthValues: Map<String, String>? = null
@@ -535,6 +537,8 @@ open class UserAccountManager protected constructor() {
                 .beaconChildConsumerKey(beaconChildConsumerKey)
                 .beaconChildConsumerSecret(beaconChildConsumerSecret)
                 .scope(scope)
+                .credentialsIdentifier(credentialsIdentifier)
+                .tokenType(tokenType)
                 .additionalOauthValues(additionalOauthValues)
                 .build()
             if (!TextUtils.isEmpty(featureFlagsRaw)) {
@@ -691,6 +695,12 @@ open class UserAccountManager protected constructor() {
         extras.putString(AuthenticatorService.KEY_BEACON_CHILD_CONSUMER_KEY, SalesforceSDKManager.encrypt(userAccount.beaconChildConsumerKey, encryptionKey))
         extras.putString(AuthenticatorService.KEY_BEACON_CHILD_CONSUMER_SECRET, SalesforceSDKManager.encrypt(userAccount.beaconChildConsumerSecret, encryptionKey))
         extras.putString(AuthenticatorService.KEY_SCOPE, SalesforceSDKManager.encrypt(userAccount.scope, encryptionKey))
+        userAccount.credentialsIdentifier?.let {
+            extras.putString(AuthenticatorService.KEY_CREDENTIALS_IDENTIFIER, SalesforceSDKManager.encrypt(it, encryptionKey))
+        }
+        userAccount.tokenType?.let {
+            extras.putString(AuthenticatorService.KEY_TOKEN_TYPE, SalesforceSDKManager.encrypt(it, encryptionKey))
+        }
         val featureFlags = userAccount.featureFlags
         if (featureFlags.isNotEmpty()) {
             extras.putString(

@@ -334,6 +334,20 @@ class UserAccount {
     var scope: String? = null
         internal set
 
+    /**
+     * Returns the credentials identifier used as the keystore alias for
+     * this user's DPoP keypair, or null if DPoP is not in use.
+     */
+    var credentialsIdentifier: String? = null
+        internal set
+
+    /**
+     * Returns the token type returned by the token endpoint
+     * (e.g. "Bearer" or "DPoP"), or null if not set.
+     */
+    var tokenType: String? = null
+        internal set
+
     private var _featureFlags: MutableSet<String> = HashSet()
 
     /**
@@ -529,6 +543,8 @@ class UserAccount {
             beaconChildConsumerKey = jsonObject.optString(BEACON_CHILD_CONSUMER_KEY, null)
             beaconChildConsumerSecret = jsonObject.optString(BEACON_CHILD_CONSUMER_SECRET, null)
             scope = jsonObject.optString(SCOPE, null)
+            credentialsIdentifier = jsonObject.optString(CREDENTIALS_IDENTIFIER, null)
+            tokenType = jsonObject.optString(TOKEN_TYPE, null)
             @Suppress("UNCHECKED_CAST")
             additionalOauthValues = MapUtil.addJSONObjectToMap(
                 jsonObject, additionalOauthKeys, additionalOauthValues as? MutableMap<String, String>
@@ -592,6 +608,8 @@ class UserAccount {
             beaconChildConsumerKey = bundle.getString(BEACON_CHILD_CONSUMER_KEY)
             beaconChildConsumerSecret = bundle.getString(BEACON_CHILD_CONSUMER_SECRET)
             scope = bundle.getString(SCOPE)
+            credentialsIdentifier = bundle.getString(CREDENTIALS_IDENTIFIER)
+            tokenType = bundle.getString(TOKEN_TYPE)
             @Suppress("UNCHECKED_CAST")
             additionalOauthValues = MapUtil.addBundleToMap(
                 bundle, additionalOauthKeys, additionalOauthValues as? MutableMap<String, String?>
@@ -869,6 +887,8 @@ class UserAccount {
             jsonObject.put(BEACON_CHILD_CONSUMER_KEY, beaconChildConsumerKey)
             jsonObject.put(BEACON_CHILD_CONSUMER_SECRET, beaconChildConsumerSecret)
             jsonObject.put(SCOPE, scope)
+            credentialsIdentifier?.let { jsonObject.put(CREDENTIALS_IDENTIFIER, it) }
+            tokenType?.let { jsonObject.put(TOKEN_TYPE, it) }
             if (_featureFlags.isNotEmpty()) {
                 val flagsArray = JSONArray()
                 for (f in _featureFlags) flagsArray.put(f)
@@ -935,6 +955,8 @@ class UserAccount {
         bundle.putString(BEACON_CHILD_CONSUMER_KEY, beaconChildConsumerKey)
         bundle.putString(BEACON_CHILD_CONSUMER_SECRET, beaconChildConsumerSecret)
         bundle.putString(SCOPE, scope)
+        credentialsIdentifier?.let { bundle.putString(CREDENTIALS_IDENTIFIER, it) }
+        tokenType?.let { bundle.putString(TOKEN_TYPE, it) }
         bundle = MapUtil.addMapToBundle(additionalOauthValues, additionalOauthKeys, bundle) ?: bundle
         return bundle
     }
@@ -996,6 +1018,8 @@ class UserAccount {
         const val BEACON_CHILD_CONSUMER_SECRET = "auto_installed_app_org_consumer_secret"
         const val SCOPE = "scope"
         const val FEATURE_FLAGS = "feature_flags"
+        const val CREDENTIALS_IDENTIFIER = "credentialsIdentifier"
+        const val TOKEN_TYPE = "tokenType"
 
         private const val TAG = "UserAccount"
         private const val FORWARD_SLASH = "/"

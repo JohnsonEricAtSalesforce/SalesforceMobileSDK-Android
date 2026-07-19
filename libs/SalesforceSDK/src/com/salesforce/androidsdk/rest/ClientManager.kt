@@ -186,7 +186,7 @@ class ClientManager(
                 userAccount.firstName, userAccount.lastName, userAccount.displayName, userAccount.email, userAccount.photoUrl, userAccount.thumbnailUrl, userAccount.additionalOauthValues,
                 userAccount.lightningDomain, userAccount.lightningSid, userAccount.vfDomain, userAccount.vfSid, userAccount.contentDomain, userAccount.contentSid, userAccount.csrfToken
             )
-            return RestClient(clientInfo, userAccount.authToken, HttpAccess.DEFAULT!!, authTokenProvider)
+            return RestClient(clientInfo, userAccount.authToken, userAccount.tokenType, userAccount.credentialsIdentifier, HttpAccess.DEFAULT!!, authTokenProvider)
         } catch (e: URISyntaxException) {
             SalesforceSDKLogger.w(TAG, "Invalid server URL", e)
             throw AccountInfoNotFoundException("invalid server url", e)
@@ -344,6 +344,7 @@ class ClientManager(
         private var lastNewAuthToken: String? = authToken
         private var lastNewInstanceUrl: String? = instanceUrl
         private var lastRefreshTime: Long = -1 /* never refreshed */
+        private var lastTokenType: String? = null
 
         /**
          * App-global, per-account refresh coordination state.
@@ -371,6 +372,7 @@ class ClientManager(
             var newAuthToken: String? = null        // last winner's fresh access token (null on failure)
             var newInstanceUrl: String? = null      // last winner's instance URL (losers need it)
             var rotatedRefreshToken: String? = null // refresh token after rotation, for losers to adopt
+            var newTokenType: String? = null        // last winner's token type (e.g. "Bearer" or "DPoP")
             var lastRefreshTime: Long = -1
         }
 
@@ -532,6 +534,7 @@ class ClientManager(
             // can leave state.refreshing stuck true.
             var newAuthToken: String? = null
             var newInstanceUrl: String? = null
+            var newTokenType: String? = null
 
             try {
                 /*
@@ -564,6 +567,7 @@ class ClientManager(
                             )
                             newAuthToken = storedAuthToken
                             newInstanceUrl = currentAccount.instanceServer
+                            newTokenType = currentAccount.tokenType
                             refreshToken = storedRefreshToken
                             return newAuthToken
                         }
@@ -584,6 +588,7 @@ class ClientManager(
 
                 newAuthToken = userAccount.authToken
                 newInstanceUrl = userAccount.instanceServer
+                newTokenType = userAccount.tokenType
 
                 val broadcastIntent: Intent
                 if (newInstanceUrl != null && !newInstanceUrl.equals(lastNewInstanceUrl, ignoreCase = true)) {
@@ -662,6 +667,7 @@ class ClientManager(
                 // Update this instance's own cache so its getters stay correct.
                 lastNewAuthToken = newAuthToken
                 lastNewInstanceUrl = newInstanceUrl
+                lastTokenType = newTokenType
                 lastRefreshTime = System.currentTimeMillis()
                 // Publish the result to the per-account state and wake any waiting losers.
                 // This is the SINGLE publish path and ALWAYS runs on every winner exit path so
@@ -672,6 +678,7 @@ class ClientManager(
                         state.newAuthToken = newAuthToken
                         state.newInstanceUrl = newInstanceUrl
                         state.rotatedRefreshToken = refreshToken
+                        state.newTokenType = newTokenType
                         state.lastRefreshTime = System.currentTimeMillis()
                         // Mark a fresh result as available. Bumped ONLY on success so a loser woken
                         // by a failed cycle sees an unchanged generation and correctly returns null
@@ -706,6 +713,7 @@ class ClientManager(
         private fun adoptWinnerResult(state: RefreshState) {
             lastNewAuthToken = state.newAuthToken
             lastRefreshTime = state.lastRefreshTime
+            lastTokenType = state.newTokenType
             if (state.newInstanceUrl != null) {
                 lastNewInstanceUrl = state.newInstanceUrl
             }
@@ -726,6 +734,10 @@ class ClientManager(
             return lastNewInstanceUrl
         }
 
+        override fun getTokenType(): String? {
+            return lastTokenType
+        }
+
         @Throws(NetworkErrorException::class, OAuth2.OAuthFailedException::class, MalformedTokenException::class)
         private fun refreshStaleToken(account: Account): UserAccount {
             val originalUserAccount = UserAccountManager.getInstance().buildUserAccount(account)
@@ -741,7 +753,8 @@ class ClientManager(
                 SalesforceSDKLogger.i(TAG, "Initiating token refresh to host: " + tokenServer.host)
                 val tr = OAuth2.refreshAuthToken(
                     HttpAccess.DEFAULT!!,
-                    tokenServer, originalUserAccount.clientIdForRefresh!!, currentRefreshToken!!, addlParamsMap
+                    tokenServer, originalUserAccount.clientIdForRefresh!!, currentRefreshToken!!, addlParamsMap,
+                    originalUserAccount.credentialsIdentifier
                 )
 
                 if (tr.authToken == null) {

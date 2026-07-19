@@ -655,6 +655,13 @@ class LoginServerManager @VisibleForTesting constructor(
         const val WELCOME_LOGIN_URL = "https://welcome.salesforce.com/discovery"
         const val SANDBOX_LOGIN_URL = "https://test.salesforce.com"
 
+        /** Returns true when [serverUrl] is one of the three Salesforce pool (non-my-domain) servers. */
+        @JvmStatic
+        fun isPoolServer(serverUrl: String): Boolean =
+            serverUrl == PRODUCTION_LOGIN_URL ||
+                serverUrl == SANDBOX_LOGIN_URL ||
+                serverUrl == WELCOME_LOGIN_URL
+
         /** Shared preferences when non-custom login servers are provided by resources servers.xml */
         @JvmField
         @VisibleForTesting

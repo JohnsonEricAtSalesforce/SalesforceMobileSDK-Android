@@ -33,6 +33,8 @@ import androidx.core.content.ContextCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SmallTest
 import androidx.test.platform.app.InstrumentationRegistry
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_CREDENTIALS_IDENTIFIER
+import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_TOKEN_TYPE
 import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.TEST_USERNAME
 import com.salesforce.androidsdk.accounts.UserAccountTest.Companion.checkSameUserAccount
 import com.salesforce.androidsdk.app.SalesforceSDKManager
@@ -210,6 +212,69 @@ class UserAccountManagerTest {
             "Snapshot built before rotation should reflect the latest persisted refresh token",
             rotatedRefreshToken,
             staleUser.refreshToken
+        )
+    }
+
+    /*
+     * Regression test for DPoP fields not persisted in AccountManager.
+     *
+     * credentialsIdentifier and tokenType were omitted from buildAuthBundle /
+     * buildUserAccount, so both came back null after any process restart.
+     * This caused the DPoP proof to be skipped on token refresh, resulting in
+     * the server rejecting the request with "app requires proof of possession".
+     */
+    @Test
+    fun test_givenDPoPAccount_whenCreateAndBuildUserAccount_thenCredentialsIdentifierAndTokenTypeRoundTrip() {
+        val userAccount = UserAccountTest.createTestAccount()
+        Assert.assertEquals(
+            "Precondition: test account must have credentialsIdentifier set",
+            TEST_CREDENTIALS_IDENTIFIER, userAccount.credentialsIdentifier
+        )
+        Assert.assertEquals(
+            "Precondition: test account must have tokenType set",
+            TEST_TOKEN_TYPE, userAccount.tokenType
+        )
+
+        userAccMgr.createAccount(userAccount)
+        val account = userAccMgr.currentAccount
+        val restored = userAccMgr.buildUserAccount(account)!!
+
+        Assert.assertEquals(
+            "credentialsIdentifier must survive createAccount → buildUserAccount round-trip",
+            TEST_CREDENTIALS_IDENTIFIER, restored.credentialsIdentifier
+        )
+        Assert.assertEquals(
+            "tokenType must survive createAccount → buildUserAccount round-trip",
+            TEST_TOKEN_TYPE, restored.tokenType
+        )
+    }
+
+    /*
+     * Regression test: updateAccount must also persist credentialsIdentifier and tokenType.
+     */
+    @Test
+    fun test_givenDPoPAccount_whenUpdateAccount_thenCredentialsIdentifierAndTokenTypeRoundTrip() {
+        val original = UserAccountTest.createTestAccount()
+        userAccMgr.createAccount(original)
+        val account = userAccMgr.currentAccount!!
+
+        val newCredId = "updated-credentials-id"
+        val newTokenType = "DPoP"
+        val updated = UserAccountBuilder.getInstance()
+            .populateFromUserAccount(original)
+            .credentialsIdentifier(newCredId)
+            .tokenType(newTokenType)
+            .build()
+        userAccMgr.updateAccount(account, updated)
+
+        val restored = userAccMgr.buildUserAccount(account)!!
+        Assert.assertEquals(
+            "credentialsIdentifier must survive updateAccount → buildUserAccount round-trip",
+            newCredId, restored.credentialsIdentifier
+        )
+        Assert.assertEquals(
+            "tokenType must survive updateAccount → buildUserAccount round-trip",
+            newTokenType, restored.tokenType
         )
     }
 
