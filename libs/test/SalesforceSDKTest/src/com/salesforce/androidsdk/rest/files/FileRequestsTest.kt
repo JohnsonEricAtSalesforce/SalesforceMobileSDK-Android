@@ -62,7 +62,7 @@ class FileRequestsTest {
         Assert.assertEquals(connectPath + "connect/files/batch/06930000001LkwtAAC,06930000001LkwtAAD", r.path)
         doAdditionalVerifications(r)
         try {
-            FileRequests.batchFileDetails(listOf("06930000001LkwtAAC"))
+            FileRequests.batchFileDetails(listOf("06930000001LkwtAAC", null))
             Assert.fail("should of thrown an exception")
         } catch (e: IllegalArgumentException) { /* expected */
         }

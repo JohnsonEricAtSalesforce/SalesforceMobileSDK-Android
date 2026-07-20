@@ -113,7 +113,7 @@ class FileRequests : ApiRequests() {
          * @return A new RestRequest that can be used to fetch this data.
          */
         @JvmStatic
-        fun batchFileDetails(sfdcIds: List<String>): RestRequest {
+        fun batchFileDetails(sfdcIds: List<String?>): RestRequest {
             validateSfdcIds(sfdcIds)
             val ids = TextUtils.join(",", sfdcIds)
             return make(base("connect/files").appendPath("batch").appendPath(ids))
