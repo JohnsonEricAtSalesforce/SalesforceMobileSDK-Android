@@ -150,7 +150,7 @@ class HttpAccessTest {
         Assert.assertEquals("$expectedStatusCode response expected", expectedStatusCode, response.code)
         try {
             // Check body
-            val responseAsString = RestResponse(response).asString()
+            val responseAsString = RestResponse(response).asString()!!
             for (stringToMatch in stringsToMatch) {
                 Assert.assertTrue("Response should contain $stringToMatch", responseAsString.indexOf(stringToMatch) > 0)
             }

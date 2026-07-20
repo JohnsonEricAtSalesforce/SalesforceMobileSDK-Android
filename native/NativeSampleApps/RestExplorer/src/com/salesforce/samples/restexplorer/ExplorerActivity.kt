@@ -639,10 +639,10 @@ class ExplorerActivity : SalesforceActivity() {
                     try {
                         val duration = System.nanoTime() - start
                         println(result)
-                        val size = result.asString().length
+                        val size = result.asString()!!.length
                         val statusCode = result.statusCode
                         printRequestInfo(duration, size, statusCode)
-                        extractIdsFromResponse(result.asString())
+                        extractIdsFromResponse(result.asString()!!)
                     } catch (e: Exception) {
                         printException(e)
                     }

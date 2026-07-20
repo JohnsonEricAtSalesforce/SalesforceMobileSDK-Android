@@ -139,7 +139,7 @@ internal class TokenMigrationActivity : ComponentActivity() {
                     singleAccessResponse
                         ?.takeIf { it.isSuccess }
                         ?.let {
-                            Json.parseToJsonElement(it.asString())
+                            Json.parseToJsonElement(it.asString()!!)
                                 .jsonObject[FRONTDOOR_URL_KEY]
                                 ?.jsonPrimitive?.content
                         }

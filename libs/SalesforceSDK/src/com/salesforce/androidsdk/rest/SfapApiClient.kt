@@ -83,7 +83,7 @@ class SfapApiClient(
         return if (restResponse.isSuccess && responseBodyString != null) {
             SfapApiEmbeddingsResponseBody.fromJson(responseBodyString)
         } else {
-            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString)
+            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString!!)
             throw SfapApiException(
                 errorCode = errorResponseBody.errorCode,
                 message = responseBodyString,
@@ -122,7 +122,7 @@ class SfapApiClient(
         return if (restResponse.isSuccess && responseBodyString != null) {
             SfapApiChatGenerationsResponseBody.fromJson(responseBodyString)
         } else {
-            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString)
+            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString!!)
             throw SfapApiException(
                 errorCode = errorResponseBody.errorCode,
                 message = responseBodyString,
@@ -161,7 +161,7 @@ class SfapApiClient(
         return if (restResponse.isSuccess && responseBodyString != null) {
             fromJson(responseBodyString)
         } else {
-            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString)
+            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString!!)
             throw SfapApiException(
                 errorCode = errorResponseBody.errorCode,
                 message = responseBodyString,
@@ -198,7 +198,7 @@ class SfapApiClient(
         return if (restResponse.isSuccess && responseBodyString != null) {
             SfapApiFeedbackResponseBody.fromJson(responseBodyString)
         } else {
-            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString)
+            val errorResponseBody = SfapApiErrorResponseBody.fromJson(responseBodyString!!)
             throw SfapApiException(
                 errorCode = errorResponseBody.errorCode,
                 message = responseBodyString,

@@ -212,7 +212,7 @@ object MobileSyncLogger {
                         toString(obj.asJSONArray())
                     } catch (e1: Exception) {
                         try {
-                            obj.asString()
+                            obj.asString()!!
                         } catch (e2: IOException) {
                             obj.toString()
                         }

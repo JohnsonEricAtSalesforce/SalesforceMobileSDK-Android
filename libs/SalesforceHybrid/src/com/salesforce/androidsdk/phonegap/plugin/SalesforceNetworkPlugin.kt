@@ -170,7 +170,7 @@ class SalesforceNetworkPlugin : ForcePlugin() {
         }
 
         // Otherwise return as string
-        return response.asString()
+        return response.asString()!!
     }
 
     @Throws(IOException::class)

@@ -425,7 +425,7 @@ class AppAttestationClientTest {
         body: String?,
         success: Boolean,
     ): RestResponse = mockk<RestResponse>(relaxed = true).also { response ->
-        every { response.asString() } returns (body ?: "")
+        every { response.asString() } returns body
         every { response.isSuccess } returns success
     }
 

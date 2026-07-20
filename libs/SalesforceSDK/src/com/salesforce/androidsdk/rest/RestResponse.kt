@@ -138,12 +138,12 @@ class RestResponse(private val response: Response) {
      * @throws IOException
      */
     @Throws(IOException::class)
-    fun asString(): String {
+    fun asString(): String? {
         if (responseAsString == null) {
             val bytes = asBytes() // will also compute responseCharSet
             responseAsString = String(bytes!!, responseCharSet!!)
         }
-        return responseAsString!!
+        return responseAsString
     }
 
     /**
