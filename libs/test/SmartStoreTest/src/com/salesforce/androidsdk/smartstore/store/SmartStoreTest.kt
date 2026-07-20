@@ -669,6 +669,64 @@ open class SmartStoreTest : SmartStoreTestCase() {
         } finally { safeClose(c) }
     }
 
+    /**
+     * Test using smart sql to retrieve integer indexed fields
+     */
+    @Test
+    fun testIntegerIndexedFieldWithSmartSql() {
+        registerSoup(store, FOURTH_TEST_SOUP, arrayOf(IndexSpec("amount", Type.integer)))
+        tryNumberWithSmartSql(Type.integer, Int.MIN_VALUE, Int.MIN_VALUE)
+        tryNumberWithSmartSql(Type.integer, Int.MAX_VALUE, Int.MAX_VALUE)
+        tryNumberWithSmartSql(Type.integer, Long.MIN_VALUE, Long.MIN_VALUE)
+        tryNumberWithSmartSql(Type.integer, Long.MIN_VALUE, Long.MIN_VALUE)
+        tryNumberWithSmartSql(Type.integer, Double.MIN_VALUE, Double.MIN_VALUE.toLong())
+        tryNumberWithSmartSql(Type.integer, Double.MAX_VALUE, Double.MAX_VALUE.toLong())
+    }
+
+    /**
+     * Test using smart sql to retrieve indexed fields holding doubles
+     * NB smart sql will return a long when querying a double field that contains a long
+     */
+    @Test
+    fun testFloatingIndexedFieldWithSmartSql() {
+        registerSoup(store, FOURTH_TEST_SOUP, arrayOf(IndexSpec("amount", Type.floating)))
+        tryNumberWithSmartSql(Type.floating, Int.MIN_VALUE, Int.MIN_VALUE)
+        tryNumberWithSmartSql(Type.floating, Int.MAX_VALUE, Int.MAX_VALUE)
+        tryNumberWithSmartSql(Type.floating, Long.MIN_VALUE, Long.MIN_VALUE)
+        tryNumberWithSmartSql(Type.floating, Long.MIN_VALUE, Long.MIN_VALUE)
+        tryNumberWithSmartSql(Type.floating, Double.MIN_VALUE, Double.MIN_VALUE)
+        tryNumberWithSmartSql(Type.floating, Double.MAX_VALUE, Double.MAX_VALUE)
+    }
+
+    /**
+     * Test using smart sql to retrieve number fields indexed with json1
+     */
+    @Test
+    fun testNumberFieldWithJSON1IndexWithSmartSql() {
+        store.registerSoup(FOURTH_TEST_SOUP, arrayOf(IndexSpec("amount", Type.json1)))
+        tryNumberWithSmartSql(Type.integer, Int.MIN_VALUE, Int.MIN_VALUE)
+        tryNumberWithSmartSql(Type.integer, Int.MAX_VALUE, Int.MAX_VALUE)
+        tryNumberWithSmartSql(Type.integer, Long.MIN_VALUE, Long.MIN_VALUE)
+        tryNumberWithSmartSql(Type.integer, Long.MIN_VALUE, Long.MIN_VALUE)
+        tryNumberWithSmartSql(Type.floating, Math.PI, Math.PI)
+    }
+
+    /**
+     * Helper method for testIntegerIndexedFieldWithSmartSql and testFloatingIndexedFieldWithSmartSql
+     * Insert soup element with number and retrieve it back using smartsql
+     */
+    private fun tryNumberWithSmartSql(fieldType: Type, valueIn: Number, valueOut: Number) {
+        val smartSql = "SELECT {$FOURTH_TEST_SOUP:amount} FROM {$FOURTH_TEST_SOUP} WHERE {$FOURTH_TEST_SOUP:_soupEntryId} = "
+        val elt = JSONObject()
+        elt.put("amount", valueIn)
+        val id = store.upsert(FOURTH_TEST_SOUP, elt)!!.getLong(SmartStore.SOUP_ENTRY_ID)!!
+        val actualValueOut = store.query(QuerySpec.buildSmartQuerySpec(smartSql + id, 1), 0).getJSONArray(0).get(0) as Number
+        if (fieldType == Type.integer)
+            Assert.assertEquals("Not the value expected", valueOut.toLong(), actualValueOut.toLong())
+        else if (fieldType == Type.floating)
+            Assert.assertEquals("Not the value expected", valueOut.toDouble(), actualValueOut.toDouble(), 0.0)
+    }
+
     @Test
     fun testGetDatabaseSize() {
         val initialSize = store.getDatabaseSize()
