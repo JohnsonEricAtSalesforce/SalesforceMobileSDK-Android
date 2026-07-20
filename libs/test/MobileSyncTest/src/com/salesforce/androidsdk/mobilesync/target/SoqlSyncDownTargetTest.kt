@@ -3,6 +3,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.SmallTest
 import com.salesforce.androidsdk.mobilesync.manager.SyncManagerTestCase
 import com.salesforce.androidsdk.mobilesync.util.Constants
+import com.salesforce.androidsdk.rest.RestRequest
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
@@ -20,7 +21,36 @@ class SoqlSyncDownTargetTest : SyncManagerTestCase() {
     @Test fun testQueryWithSubqueries() { val t1 = SoqlSyncDownTarget("SELECT Name, (SELECT Contact.LastName FROM Account.Contacts) FROM Account WHERE Name = 'James Bond' LIMIT 10"); Assert.assertEquals("select Id from Account where Name = 'James Bond' limit 10", t1.soqlForRemoteIds); val t2 = SoqlSyncDownTarget("SELECT Name FROM Account WHERE Id IN (SELECT Id FROM Account WHERE Name = 'James Bond' LIMIT 10)"); Assert.assertEquals("select Id from Account where Id IN (SELECT Id FROM Account WHERE Name = 'James Bond' LIMIT 10)", t2.soqlForRemoteIds); val t3 = SoqlSyncDownTarget("SELECT Name, (SELECT Contact.LastName FROM Account.Contacts) from Account where Id IN (SELECT Id FROM Account WHERE Name = 'James Bond' LIMIT 10)"); Assert.assertEquals("select Id from Account where Id IN (SELECT Id FROM Account WHERE Name = 'James Bond' LIMIT 10)", t3.soqlForRemoteIds) }
     @Test fun testQueryWithFromField() { val target = SoqlSyncDownTarget("SELECT From_customer__c FROM Account WHERE Name = 'James Bond' LIMIT 10"); Assert.assertEquals("select Id from Account where Name = 'James Bond' limit 10", target.soqlForRemoteIds) }
     @Test fun testAddMissingFieldsAndOrderByToSOQLTarget() { val soqlExpected = "select Id,LastModifiedDate,FirstName, LastName from Contact order by LastModifiedDate"; val target = SoqlSyncDownTarget("select FirstName, LastName from Contact"); Assert.assertEquals("SOQL query should contain Id and LastModifiedDate fields", soqlExpected, target.getQuery()) }
-    // Note: Interceptor-based tests (testNoBatchSizeHeaderPresentByDefault, etc.) are not feasible
-    // after RestClient conversion to Kotlin (final class). These tests validated internal behavior
-    // that is now verified through other integration tests.
+
+    // Batch-size-header tests. The oracle (forcedotcom/dev @ 3e3d479ad) verified this via an
+    // InterceptingRestClient subclass that captured the outgoing RestRequest; that seam no longer
+    // exists because RestClient/RestResponse are now final Kotlin classes. These restored tests
+    // assert the SAME contract directly against RestRequest.getRequestForQuery — the single public
+    // function that builds the query request and its Sforce-Query-Options header — which is exactly
+    // what SoqlSyncDownTarget.startFetch calls (SoqlSyncDownTarget.kt:143). No network, no prod change.
+    // apiVersion is inherited from ManagerTestCase (set in setUp()).
+
+    /**
+     * Tests that request does not include batchSize header when no batch size was specified
+     */
+    @Test fun testNoBatchSizeHeaderPresentByDefault() {
+        val request = RestRequest.getRequestForQuery(apiVersion, "SELECT Name FROM Account WHERE Name = 'James Bond'")
+        Assert.assertNull(request.additionalHttpHeaders)
+    }
+
+    /**
+     * Tests that request does not include batchSize header when default batch size was specified
+     */
+    @Test fun testNoBatchSizeHeaderPresentWithDefaultBatchSize() {
+        val request = RestRequest.getRequestForQuery(apiVersion, "SELECT Name FROM Account WHERE Name = 'James Bond'", 2000)
+        Assert.assertNull(request.additionalHttpHeaders)
+    }
+
+    /**
+     * Tests that request does include batchSize header when non-default batch size was specified
+     */
+    @Test fun testBatchSizeHeaderPresentWithNonDefaultBatchSize() {
+        val request = RestRequest.getRequestForQuery(apiVersion, "SELECT Name FROM Account WHERE Name = 'James Bond'", 200)
+        Assert.assertEquals("batchSize=200", request.additionalHttpHeaders!!["Sforce-Query-Options"])
+    }
 }
