@@ -56,6 +56,194 @@ class SyncManagerTest : SyncManagerTestCase() {
     @Test fun testCustomSyncDownTarget() { val syncName = "testCustomSyncDownTarget"; val numberOfRecords = 30; val target = TestSyncDownTarget("test", numberOfRecords, 10, 0); val syncId = trySyncDown(MergeMode.LEAVE_IF_CHANGED, target, ACCOUNTS_SOUP, numberOfRecords, 3, syncName); val sync = syncManager.getSyncStatus(syncId)!!; Assert.assertEquals("Wrong time stamp", target.dateForPosition(numberOfRecords - 1).time, sync.maxTimeStamp); checkDbForAfterTestSyncDown(target, ACCOUNTS_SOUP, numberOfRecords) }
 
     private fun checkDbForAfterTestSyncDown(target: TestSyncDownTarget, soupName: String, expectedNumberOfRecords: Int) { val query = QuerySpec.buildSmartQuerySpec(String.format("SELECT {%1\$s:%2\$s} from {%1\$s} where {%1\$s:%2\$s} like '%3\$s%%' order by {%1\$s:%2\$s}", soupName, Constants.ID, target.getIdPrefix()), Int.MAX_VALUE); val result = smartStore.query(query, 0); Assert.assertEquals("Wrong number of records", expectedNumberOfRecords, result.length()); for (i in 0 until expectedNumberOfRecords) { Assert.assertEquals("Wrong id", target.idForPosition(i), result.getJSONArray(i).getString(0)) } }
+
+    /**
+     * Test running and stopping a single sync down (using TestSyncDownTarget)
+     */
+    @Test fun testStopResumeSingleSyncDown() {
+        val syncName = "testStopResumeSingleSyncDown"
+        val numberOfRecords = 10
+        val target = TestSyncDownTarget("test", numberOfRecords, 1, 50)
+        val options = SyncOptions.optionsForSyncDown(MergeMode.LEAVE_IF_CHANGED)
+        val sync = SyncState.createSyncDown(smartStore, target, options, ACCOUNTS_SOUP, syncName)
+        val syncId = sync.id
+
+        // Run sync
+        val queue = SyncUpdateCallbackQueue(syncId)
+        syncManager.reSync(syncName, queue)
+
+        // Check status updates
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 0, -1)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 0, numberOfRecords)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 10, numberOfRecords)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 20, numberOfRecords)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 30, numberOfRecords)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 40, numberOfRecords)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 50, numberOfRecords)
+
+        // Stop sync manager
+        stopSyncManager(1000)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, STOPPED, 50, numberOfRecords)
+        val numberOfRecordsFetched = (numberOfRecords * 0.5).toInt()
+        val numberOfRecordsLeft = numberOfRecords - numberOfRecordsFetched + 1 /* we refetch records at maxTimeStamp when a sync was stopped */
+
+        // Check db
+        checkDbForAfterTestSyncDown(target, ACCOUNTS_SOUP, numberOfRecordsFetched)
+
+        // Check sync time stamp and status
+        checkSyncState(syncId, target.dateForPosition(numberOfRecordsFetched - 1).time, STOPPED)
+
+        // Try to restart sync while sync manager is paused
+        try {
+            syncManager.reSync(syncName, queue)
+            Assert.fail("Expected exception")
+        } catch (e: SyncManager.MobileSyncException) {
+            Assert.assertTrue("Wrong exception", e is SyncManager.SyncManagerStoppedException)
+        }
+
+        // Restarting sync manager without restarting syncs
+        syncManager.restart(false, null)
+        Assert.assertFalse("Stopped should be false", syncManager.isStopped)
+
+        // Check sync time stamp and status
+        checkSyncState(syncId, target.dateForPosition(numberOfRecordsFetched - 1).time, STOPPED)
+
+        // Stop sync manager
+        stopSyncManager(1000)
+
+        // Restarting sync manager restarting syncs
+        syncManager.restart(true, queue)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 0, -1)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 0, numberOfRecordsLeft)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 16, numberOfRecordsLeft)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 33, numberOfRecordsLeft)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 50, numberOfRecordsLeft)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 66, numberOfRecordsLeft)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, RUNNING, 83, numberOfRecordsLeft)
+        checkStatus(queue.getNextSyncUpdate(syncId), syncDown, syncId, target, options, DONE, 100, numberOfRecordsLeft)
+        checkDbForAfterTestSyncDown(target, ACCOUNTS_SOUP, numberOfRecords)
+    }
+
+    /**
+     * Test running and stopping multiple (using TestSyncDownTarget)
+     */
+    @Test fun testStopResumeMultipleSyncDowns() {
+        val syncName1 = "testStopResumeMultipleSyncDowns1"
+        val syncName2 = "testStopResumeMultipleSyncDowns2"
+
+        val numberRecords1 = 5
+        val numberRecords2 = 4
+
+        val options = SyncOptions.optionsForSyncDown(MergeMode.LEAVE_IF_CHANGED)
+        val target1 = TestSyncDownTarget("test1", numberRecords1, 1, 50)
+        val target2 = TestSyncDownTarget("test2", numberRecords2, 1, 50)
+        val syncId1 = SyncState.createSyncDown(smartStore, target1, options, ACCOUNTS_SOUP, syncName1).id
+        val syncId2 = SyncState.createSyncDown(smartStore, target2, options, ACCOUNTS_SOUP, syncName2).id
+
+        // Run sync
+        val queue = SyncUpdateCallbackQueue(syncId1, syncId2)
+        syncManager.reSync(syncName1, queue)
+        try {
+            // Sleeping a bit - to make sure it goes first
+            Thread.sleep(25)
+        } catch (e: Exception) {
+            Assert.fail("Test interrupted")
+        }
+        syncManager.reSync(syncName2, queue)
+
+        // Check status updates
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, RUNNING, 0, -1)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, RUNNING, 0, -1)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, RUNNING, 0, numberRecords1)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, RUNNING, 20, numberRecords1)
+
+        // Stop sync manager
+        stopSyncManager(1000)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, STOPPED, 20, numberRecords1)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, STOPPED, 0, -1)
+        val numberOfRecordsFetched1 = (numberRecords1 * 0.2).toInt()
+        val numberRecordsLeft1 = numberRecords1 - numberOfRecordsFetched1 + 1 /* we refetch records at maxTimeStamp when a sync was stopped */
+
+        // Check db
+        checkDbForAfterTestSyncDown(target1, ACCOUNTS_SOUP, numberOfRecordsFetched1)
+        checkDbForAfterTestSyncDown(target2, ACCOUNTS_SOUP, 0)
+
+        // Check sync time stamp and status
+        checkSyncState(syncId1, target1.dateForPosition(numberOfRecordsFetched1 - 1).time, STOPPED)
+        checkSyncState(syncId2, -1, STOPPED)
+
+        // Restarting sync manager without restarting syncs
+        syncManager.restart(false, queue)
+        Assert.assertFalse("Stopped should be false", syncManager.isStopped)
+
+        // Manually restart second sync
+        syncManager.reSync(syncName2, queue)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, RUNNING, 0, -1)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, RUNNING, 0, numberRecords2)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, RUNNING, 25, numberRecords2)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, RUNNING, 50, numberRecords2)
+
+        // Stop sync manager
+        stopSyncManager(1000)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, STOPPED, 50, numberRecords2)
+        val numberRecordsFetched2 = (numberRecords2 * 0.50).toInt()
+        val numberRecordsLeft2 = numberRecords2 - numberRecordsFetched2 + 1 /* we refetch records at maxTimeStamp when a sync was stopped */
+
+        // Check sync time stamp and status
+        checkSyncState(syncId1, target1.dateForPosition(numberOfRecordsFetched1 - 1).time, STOPPED)
+        checkSyncState(syncId2, target2.dateForPosition(numberRecordsFetched2 - 1).time, STOPPED)
+
+        // Check db
+        checkDbForAfterTestSyncDown(target1, ACCOUNTS_SOUP, numberOfRecordsFetched1)
+        checkDbForAfterTestSyncDown(target2, ACCOUNTS_SOUP, numberRecordsFetched2)
+
+        // Restarting sync manager restarting syncs
+        syncManager.restart(true, queue)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, RUNNING, 0, -1)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, RUNNING, 0, -1)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, RUNNING, 0, numberRecordsLeft1)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, RUNNING, 20, numberRecordsLeft1)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, RUNNING, 40, numberRecordsLeft1)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, RUNNING, 60, numberRecordsLeft1)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, RUNNING, 80, numberRecordsLeft1)
+        checkStatus(queue.getNextSyncUpdate(syncId1), syncDown, syncId1, target1, options, DONE, 100, numberRecordsLeft1)
+
+        // sync1 is done, sync2 should run next
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, RUNNING, 0, numberRecordsLeft2)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, RUNNING, 33, numberRecordsLeft2)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, RUNNING, 66, numberRecordsLeft2)
+        checkStatus(queue.getNextSyncUpdate(syncId2), syncDown, syncId2, target2, options, DONE, 100, numberRecordsLeft2)
+
+        // Check db
+        checkDbForAfterTestSyncDown(target1, ACCOUNTS_SOUP, numberRecords1)
+        checkDbForAfterTestSyncDown(target2, ACCOUNTS_SOUP, numberRecords2)
+    }
+
+    private fun checkSyncState(syncId: Long, expectedTimeStamp: Long, expectedStatus: SyncState.Status) {
+        val sync = syncManager.getSyncStatus(syncId)!!
+        Assert.assertEquals("Wrong time stamp", expectedTimeStamp, sync.maxTimeStamp)
+        Assert.assertEquals("Wrong status", expectedStatus, sync.status)
+    }
+
+    private fun stopSyncManager(sleepDuration: Int) {
+        Assert.assertFalse("Stopped should be false", syncManager.isStopped)
+        Assert.assertFalse("Stopping should be false", syncManager.isStopping)
+        syncManager.stop()
+
+        if (sleepDuration > 0) {
+            // We expect stopping to take a while
+            Assert.assertTrue("Stopped or stopping should be true", syncManager.isStopping || syncManager.isStopped)
+
+            try {
+                Thread.sleep(sleepDuration.toLong())
+            } catch (e: Exception) {
+                Assert.fail("Test interrupted")
+            }
+        }
+
+        Assert.assertFalse("Stopping should be false", syncManager.isStopping)
+        Assert.assertTrue("Stopped should be true", syncManager.isStopped)
+    }
     private fun trySyncDown(mergeMode: MergeMode): Long = trySyncDown(mergeMode, null)
     private fun trySyncDown(mergeMode: MergeMode, syncName: String?): Long { val target = SoqlSyncDownTarget("SELECT Id, Name, Description, LastModifiedDate FROM Account WHERE Id IN ${makeInClause(idToFields.keys)}"); return trySyncDown(mergeMode, target, ACCOUNTS_SOUP, idToFields.size, 1, syncName) }
 
