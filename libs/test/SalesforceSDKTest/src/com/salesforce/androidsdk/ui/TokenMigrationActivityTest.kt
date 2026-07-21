@@ -46,7 +46,6 @@ import com.salesforce.androidsdk.rest.RestClient
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
-import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -81,9 +80,11 @@ class TokenMigrationActivityTest {
 
     @Before
     fun setUp() {
-        // Mock SalesforceLogger.getLogger to prevent readLoggerPrefs from being called
+        // Mock SalesforceLogger.getLogger to prevent readLoggerPrefs from being called.
+        // getLogger is a @JvmStatic companion function; mockkStatic(SalesforceLogger::class)
+        // does not intercept companion methods, so mockkObject(SalesforceLogger.Companion) is required.
         val mockLogger: SalesforceLogger = mockk(relaxed = true)
-        mockkStatic(SalesforceLogger::class)
+        mockkObject(SalesforceLogger.Companion)
         every { SalesforceLogger.getLogger(any(), any()) } returns mockLogger
         every { SalesforceLogger.getLogger(any(), any(), any()) } returns mockLogger
 
@@ -99,7 +100,8 @@ class TokenMigrationActivityTest {
         // Mock user properties needed for getAuthorizationUrl
         every { mockUser.instanceServer } returns "https://test.salesforce.com"
 
-        mockkStatic(UserAccountManager::class)
+        // getInstance is a @JvmStatic companion function; use mockkObject(Companion) not mockkStatic.
+        mockkObject(UserAccountManager.Companion)
         every { UserAccountManager.getInstance() } returns mockUserAccountManager
         every {
             mockUserAccountManager.getUserFromOrgAndUserId(VALID_ORG, VALID_USER)
