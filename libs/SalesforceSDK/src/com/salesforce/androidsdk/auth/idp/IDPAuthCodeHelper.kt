@@ -120,7 +120,7 @@ internal class IDPAuthCodeHelper @VisibleForTesting internal constructor(
             mapOf(ATTESTATION to attestation)
         }
 
-        val authorizationUri = getAuthorizationUrl(
+        val authorizationUri = getAuthorizationUrlForSP(
             true, // use web server flow
             useHybridAuthentication,
             URI(userAccount.loginServer),
@@ -132,7 +132,40 @@ internal class IDPAuthCodeHelper @VisibleForTesting internal constructor(
             additionalParams
         )
 
-        return authorizationUri.path + (authorizationUri.query?.let { query -> "?$query" } ?: "")
+        return authorizationUri?.let {
+            it.path + (it.query?.let { query -> "?$query" } ?: "")
+        }
+    }
+
+    /**
+     * Test seam wrapping [OAuth2.getAuthorizationUrl]. Overridable in tests so the
+     * authorization URL can be controlled without mocking the OAuth2 companion static
+     * (mockkStatic cannot intercept @JvmStatic companion methods). Defaults to delegating
+     * to the real OAuth2 implementation, so production behavior is unchanged.
+     */
+    @VisibleForTesting
+    internal var getAuthorizationUrlForSP: (
+        useWebServerAuthentication: Boolean,
+        useHybridAuthentication: Boolean,
+        loginServer: URI,
+        clientId: String,
+        callbackUrl: String,
+        scopes: Array<String>?,
+        displayType: String?,
+        codeChallenge: String?,
+        addlParams: Map<String, String>?,
+    ) -> URI? = { useWebServerAuthentication, useHybridAuthentication, loginServer, clientId, callbackUrl, scopes, displayType, codeChallenge, addlParams ->
+        getAuthorizationUrl(
+            useWebServerAuthentication,
+            useHybridAuthentication,
+            loginServer,
+            clientId,
+            callbackUrl,
+            scopes,
+            displayType,
+            codeChallenge,
+            addlParams,
+        )
     }
 
     fun getFrontdoorUrl(restClient:RestClient, redirectUri: String): String? {
