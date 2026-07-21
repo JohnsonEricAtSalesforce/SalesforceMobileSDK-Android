@@ -684,7 +684,7 @@ open class LoginViewModel(
             val credentialsIdentifier = pendingCredentialsIdentifier?.also { pendingCredentialsIdentifier = null }
                 ?: java.util.UUID.randomUUID().toString()
 
-            val tokenResponse = exchangeCode(
+            val tokenResponse = exchangeCodeForToken(
                 HttpAccess.DEFAULT!!,
                 URI.create(server),
                 consumerKey,
@@ -700,6 +700,37 @@ open class LoginViewModel(
             e(TAG, "Exception occurred while making token request", throwable)
             onAuthFlowError("Token Request Error", throwable.message, throwable)
         }
+    }
+
+    /**
+     * Performs the OAuth token exchange. Exposed as an overridable function property so tests can
+     * substitute the token exchange by direct assignment, without mocking the static companion
+     * function. This exists because [OAuth2] was migrated from Java to Kotlin, and mockk cannot
+     * reliably mock the resulting `@JvmStatic @JvmOverloads` companion function (nor replace a
+     * spied self-call from inside [doCodeExchange]). Not part of the public API. Defaults to
+     * delegating to [OAuth2.exchangeCode].
+     */
+    @VisibleForTesting
+    internal var exchangeCodeForToken: (
+        httpAccessor: HttpAccess,
+        loginServer: URI,
+        clientId: String,
+        code: String,
+        codeVerifier: String,
+        callbackUrl: String,
+        salesforceSdkManager: SalesforceSDKManager,
+        credentialsIdentifier: String?,
+    ) -> TokenEndpointResponse = { httpAccessor, loginServer, clientId, code, codeVerifier, callbackUrl, salesforceSdkManager, credentialsIdentifier ->
+        exchangeCode(
+            httpAccessor,
+            loginServer,
+            clientId,
+            code,
+            codeVerifier,
+            callbackUrl,
+            salesforceSdkManager,
+            credentialsIdentifier,
+        )
     }
 
     // region Salesforce Welcome Discovery
