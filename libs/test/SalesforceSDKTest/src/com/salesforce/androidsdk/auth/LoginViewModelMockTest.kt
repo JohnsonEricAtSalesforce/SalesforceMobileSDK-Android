@@ -36,10 +36,8 @@ import com.salesforce.androidsdk.accounts.UserAccountManager
 import com.salesforce.androidsdk.accounts.UserAccountTest
 import com.salesforce.androidsdk.app.SalesforceSDKManager
 import com.salesforce.androidsdk.auth.OAuth2.OAuthFailedException
-import com.salesforce.androidsdk.auth.OAuth2.Companion.TIMESTAMP_FORMAT
 import com.salesforce.androidsdk.auth.OAuth2.TokenEndpointResponse
 import com.salesforce.androidsdk.auth.OAuth2.TokenErrorResponse
-import com.salesforce.androidsdk.auth.OAuth2.Companion.exchangeCode
 import com.salesforce.androidsdk.config.BootConfig
 import com.salesforce.androidsdk.config.OAuthConfig
 import com.salesforce.androidsdk.security.BiometricAuthenticationManager
@@ -47,15 +45,14 @@ import com.salesforce.androidsdk.ui.LoginViewModel
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
 import io.mockk.mockkStatic
-import io.mockk.runs
 import io.mockk.spyk
 import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -644,27 +641,45 @@ class LoginViewModelMockTest {
         val mockOnSuccess: (UserAccount) -> Unit = mockk(relaxed = true)
         val mockTokenResponse: TokenEndpointResponse = mockk(relaxed = true)
 
-        // Create a spy of viewModel to verify and mock doCodeExchange
-        val spyViewModel = spyk(viewModel)
+        // Stub the token exchange via the overridable seam. OAuth2 is now Kotlin, so its @JvmStatic
+        // companion exchangeCode cannot be mocked with mockkStatic; assigning the
+        // LoginViewModel.exchangeCodeForToken function property is the reliable substitute. We then
+        // stub the downstream AuthenticationUtilities.onAuthFlowComplete free function to short-
+        // circuit account creation and verify doCodeExchange forwarded the exchange result to it.
+        viewModel.exchangeCodeForToken = { _, _, _, _, _, _, _, _ -> mockTokenResponse }
 
-        // Force OAuth2 class initialization before mocking to avoid ExceptionInInitializerError
-        TIMESTAMP_FORMAT
-        mockkStatic(OAuth2::class)
-        every {
-            exchangeCode(any(), any(), any(), any(), any(), any(), any(), any())
-        } returns mockTokenResponse
-
-        // Mock doCodeExchange to prevent actual execution
         coEvery {
-            spyViewModel.onAuthFlowComplete(any(), any(), any(), any(), any(), any())
-        } just runs
+            onAuthFlowComplete(
+                tokenResponse = any(),
+                loginServer = any(),
+                consumerKey = any(),
+                onAuthFlowError = any(),
+                onAuthFlowSuccess = any(),
+                buildAccountName = any(),
+                nativeLogin = any(),
+                tokenMigration = any(),
+                credentialsIdentifier = any(),
+                context = any(),
+                userAccountManager = any(),
+                blockIntegrationUser = any(),
+                runtimeConfig = any(),
+                updateLoggingPrefs = any(),
+                fetchUserIdentity = any(),
+                startMainActivity = any(),
+                setAdministratorPreferences = any(),
+                addAccount = any(),
+                handleScreenLockPolicy = any(),
+                handleBiometricAuthPolicy = any(),
+                handleDuplicateUserAccount = any(),
+            )
+        } returns Unit
 
         // Set up required state
-        spyViewModel.selectedServer.value = "https://test.salesforce.com"
+        viewModel.selectedServer.value = "https://test.salesforce.com"
         Thread.sleep(100)
 
         // Call function under test
-        spyViewModel.doCodeExchange(
+        viewModel.doCodeExchange(
             testCode,
             mockOnError,
             mockOnSuccess,
@@ -673,14 +688,30 @@ class LoginViewModelMockTest {
         // Give time for the coroutine to execute
         Thread.sleep(200)
 
+        // The token exchange result is forwarded to AuthenticationUtilities.onAuthFlowComplete.
         coVerify {
-            spyViewModel.onAuthFlowComplete(
-                mockTokenResponse,
-                mockOnError,
-                mockOnSuccess,
-                tokenMigration = false,
+            onAuthFlowComplete(
+                tokenResponse = mockTokenResponse,
                 loginServer = "https://test.salesforce.com",
+                consumerKey = any(),
+                onAuthFlowError = any(),
+                onAuthFlowSuccess = any(),
+                buildAccountName = any(),
+                nativeLogin = any(),
+                tokenMigration = false,
                 credentialsIdentifier = any(),
+                context = any(),
+                userAccountManager = any(),
+                blockIntegrationUser = any(),
+                runtimeConfig = any(),
+                updateLoggingPrefs = any(),
+                fetchUserIdentity = any(),
+                startMainActivity = any(),
+                setAdministratorPreferences = any(),
+                addAccount = any(),
+                handleScreenLockPolicy = any(),
+                handleBiometricAuthPolicy = any(),
+                handleDuplicateUserAccount = any(),
             )
         }
     }
@@ -693,27 +724,44 @@ class LoginViewModelMockTest {
         val mockTokenResponse: TokenEndpointResponse = mockk(relaxed = true)
         val migrationServer = "migration_server"
 
-        // Create a spy of viewModel to verify and mock doCodeExchange
-        val spyViewModel = spyk(viewModel)
+        // Stub the token exchange via the overridable seam (OAuth2 is now Kotlin; see note above),
+        // and stub the downstream AuthenticationUtilities.onAuthFlowComplete free function to
+        // short-circuit account creation so we can verify the forwarded loginServer/tokenMigration.
+        viewModel.exchangeCodeForToken = { _, _, _, _, _, _, _, _ -> mockTokenResponse }
 
-        // Force OAuth2 class initialization before mocking to avoid ExceptionInInitializerError
-        TIMESTAMP_FORMAT
-        mockkStatic(OAuth2::class)
-        every {
-            exchangeCode(any(), any(), any(), any(), any(), any(), any(), any())
-        } returns mockTokenResponse
-
-        // Mock doCodeExchange to prevent actual execution
         coEvery {
-            spyViewModel.onAuthFlowComplete(any(), any(), any(), any(), any(), any())
-        } just runs
+            onAuthFlowComplete(
+                tokenResponse = any(),
+                loginServer = any(),
+                consumerKey = any(),
+                onAuthFlowError = any(),
+                onAuthFlowSuccess = any(),
+                buildAccountName = any(),
+                nativeLogin = any(),
+                tokenMigration = any(),
+                credentialsIdentifier = any(),
+                context = any(),
+                userAccountManager = any(),
+                blockIntegrationUser = any(),
+                runtimeConfig = any(),
+                updateLoggingPrefs = any(),
+                fetchUserIdentity = any(),
+                startMainActivity = any(),
+                setAdministratorPreferences = any(),
+                addAccount = any(),
+                handleScreenLockPolicy = any(),
+                handleBiometricAuthPolicy = any(),
+                handleDuplicateUserAccount = any(),
+            )
+        } returns Unit
 
-        // Set up required state
-        spyViewModel.selectedServer.value = "https://test.salesforce.com"
+        // Populate codeVerifier deterministically (normally set async during auth-URL generation).
+        viewModel.codeVerifier = "test_code_verifier"
+        viewModel.selectedServer.value = "https://test.salesforce.com"
         Thread.sleep(100)
 
         // Call function under test
-        spyViewModel.doCodeExchange(
+        viewModel.doCodeExchange(
             testCode,
             mockOnError,
             mockOnSuccess,
@@ -724,14 +772,30 @@ class LoginViewModelMockTest {
         // Give time for the coroutine to execute
         Thread.sleep(200)
 
+        // The exchange result must be forwarded with the migration loginServer and tokenMigration.
         coVerify {
-            spyViewModel.onAuthFlowComplete(
-                mockTokenResponse,
-                mockOnError,
-                mockOnSuccess,
-                tokenMigration = true,
+            onAuthFlowComplete(
+                tokenResponse = mockTokenResponse,
                 loginServer = migrationServer,
+                consumerKey = any(),
+                onAuthFlowError = any(),
+                onAuthFlowSuccess = any(),
+                buildAccountName = any(),
+                nativeLogin = any(),
+                tokenMigration = true,
                 credentialsIdentifier = any(),
+                context = any(),
+                userAccountManager = any(),
+                blockIntegrationUser = any(),
+                runtimeConfig = any(),
+                updateLoggingPrefs = any(),
+                fetchUserIdentity = any(),
+                startMainActivity = any(),
+                setAdministratorPreferences = any(),
+                addAccount = any(),
+                handleScreenLockPolicy = any(),
+                handleBiometricAuthPolicy = any(),
+                handleDuplicateUserAccount = any(),
             )
         }
     }
@@ -751,18 +815,46 @@ class LoginViewModelMockTest {
         val mockOnSuccess: (UserAccount) -> Unit = mockk(relaxed = true)
         val mockTokenResponse: TokenEndpointResponse = mockk(relaxed = true)
 
-        // Force OAuth2 class initialization before mocking to avoid ExceptionInInitializerError
-        TIMESTAMP_FORMAT
-        mockkStatic(OAuth2::class)
-        every {
-            exchangeCode(any(), any(), any(), any(), any(), any(), any(), any())
-        } returns mockTokenResponse
+        // Stub the token exchange via the overridable seam (OAuth2 is now Kotlin; its @JvmStatic
+        // companion exchangeCode cannot be mocked with mockkStatic — assign the seam instead).
+        // Capture the credentials the exchange is invoked with so we can assert migration config.
+        var capturedClientId: String? = null
+        var capturedCallbackUrl: String? = null
+        var capturedCode: String? = null
+        viewModel.exchangeCodeForToken =
+            { _, _, clientId, code, _, callbackUrl, _, _ ->
+                capturedClientId = clientId
+                capturedCode = code
+                capturedCallbackUrl = callbackUrl
+                mockTokenResponse
+            }
 
-        // Spy so we can short-circuit account creation, leaving exchangeCode as the observable.
-        val spyViewModel = spyk(viewModel)
+        // Short-circuit account creation via the AuthenticationUtilities free function (mocked in setup()).
         coEvery {
-            spyViewModel.onAuthFlowComplete(any(), any(), any(), any(), any(), any())
-        } just runs
+            onAuthFlowComplete(
+                tokenResponse = any(),
+                loginServer = any(),
+                consumerKey = any(),
+                onAuthFlowError = any(),
+                onAuthFlowSuccess = any(),
+                buildAccountName = any(),
+                nativeLogin = any(),
+                tokenMigration = any(),
+                credentialsIdentifier = any(),
+                context = any(),
+                userAccountManager = any(),
+                blockIntegrationUser = any(),
+                runtimeConfig = any(),
+                updateLoggingPrefs = any(),
+                fetchUserIdentity = any(),
+                startMainActivity = any(),
+                setAdministratorPreferences = any(),
+                addAccount = any(),
+                handleScreenLockPolicy = any(),
+                handleBiometricAuthPolicy = any(),
+                handleDuplicateUserAccount = any(),
+            )
+        } returns Unit
 
         // Sanity: distinct from boot config so a missing side effect would surface.
         assertFalse(
@@ -774,12 +866,12 @@ class LoginViewModelMockTest {
             migrationRedirectUri == bootConfig.oauthRedirectURI,
         )
 
-        // Drive the real migration sequence: URL generation, then code exchange.
-        spyViewModel.generateMigrationAuthorizationPath(
+        // Drive the real migration sequence: URL generation (sets codeVerifier), then code exchange.
+        viewModel.generateMigrationAuthorizationPath(
             server = migrationServer,
             migrationOAuthConfig = migrationConfig,
         )
-        spyViewModel.doCodeExchange(
+        viewModel.doCodeExchange(
             testCode,
             onAuthFlowError = mockOnError,
             onAuthFlowSuccess = mockOnSuccess,
@@ -789,46 +881,47 @@ class LoginViewModelMockTest {
         Thread.sleep(200)
 
         // Token exchange must be performed with MIGRATION credentials.
-        verify {
-            exchangeCode(
-                /* httpAccessor = */ any(),
-                /* loginServer = */ any(),
-                /* clientId = */ migrationConsumerKey,
-                /* code = */ testCode,
-                /* codeVerifier = */ any(),
-                /* callbackUrl = */ migrationRedirectUri,
-                /* salesforceSdkManager = */ any(),
-                /* credentialsIdentifier = */ any(),
-            )
-        }
+        assertEquals(
+            "Token exchange must use the migration consumer key.",
+            migrationConsumerKey, capturedClientId,
+        )
+        assertEquals(
+            "Token exchange must use the migration redirect URI.",
+            migrationRedirectUri, capturedCallbackUrl,
+        )
+        assertEquals(
+            "Token exchange must use the provided auth code.",
+            testCode, capturedCode,
+        )
     }
 
     // endregion
 
     // region doCodeExchange Error Path Tests
 
-    private fun setupExchangeCodeMock(throws: Throwable) {
-        TIMESTAMP_FORMAT
-        mockkStatic(OAuth2::class)
-        every {
-            exchangeCode(any(), any(), any(), any(), any(), any(), any(), any())
-        } throws throws
+    // Stubs the token exchange to throw. OAuth2 is now Kotlin, so its @JvmStatic companion
+    // exchangeCode cannot be mocked with mockkStatic; assign the LoginViewModel.exchangeCodeForToken
+    // function-property seam on the real instance instead (its real getter returns the stub).
+    private fun setupExchangeCodeMock(loginViewModel: LoginViewModel, throws: Throwable) {
+        loginViewModel.exchangeCodeForToken = { _, _, _, _, _, _, _, _ -> throw throws }
     }
 
     @Test
     fun doCodeExchange_whenExchangeCodeThrowsClientBlocked_callsOnAuthFlowError() = runBlocking {
         val mockOnError: (String, String?, Throwable?) -> Unit = mockk(relaxed = true)
         val mockOnSuccess: (UserAccount) -> Unit = mockk(relaxed = true)
-        val spyViewModel = spyk(viewModel)
 
         val tokenErrorResponse = mockk<TokenErrorResponse>(relaxed = true)
         tokenErrorResponse.error = "client_blocked"
         tokenErrorResponse.errorDescription = "App is blocked"
         val oauthException = OAuthFailedException(tokenErrorResponse, 403)
-        setupExchangeCodeMock(oauthException)
+        setupExchangeCodeMock(viewModel, oauthException)
 
-        spyViewModel.selectedServer.value = "https://test.salesforce.com"
-        spyViewModel.doCodeExchange("test_auth_code", mockOnError, mockOnSuccess)
+        // Populate codeVerifier deterministically (normally set async during auth-URL generation);
+        // doCodeExchange reads it via verifier!! before invoking the token exchange.
+        viewModel.codeVerifier = "test_code_verifier"
+        viewModel.selectedServer.value = "https://test.salesforce.com"
+        viewModel.doCodeExchange("test_auth_code", mockOnError, mockOnSuccess)
 
         verify { mockOnError("Token Request Error", any(), oauthException) }
         verify(exactly = 0) { mockOnSuccess(any()) }
@@ -838,16 +931,18 @@ class LoginViewModelMockTest {
     fun doCodeExchange_whenExchangeCodeThrowsClientBlockedRetry_callsOnAuthFlowError() = runBlocking {
         val mockOnError: (String, String?, Throwable?) -> Unit = mockk(relaxed = true)
         val mockOnSuccess: (UserAccount) -> Unit = mockk(relaxed = true)
-        val spyViewModel = spyk(viewModel)
 
         val tokenErrorResponse = mockk<TokenErrorResponse>(relaxed = true)
         tokenErrorResponse.error = "client_blocked_retry"
         tokenErrorResponse.errorDescription = "App is blocked (retry)"
         val oauthException = OAuthFailedException(tokenErrorResponse, 403)
-        setupExchangeCodeMock(oauthException)
+        setupExchangeCodeMock(viewModel, oauthException)
 
-        spyViewModel.selectedServer.value = "https://test.salesforce.com"
-        spyViewModel.doCodeExchange("test_auth_code", mockOnError, mockOnSuccess)
+        // Populate codeVerifier deterministically (normally set async during auth-URL generation);
+        // doCodeExchange reads it via verifier!! before invoking the token exchange.
+        viewModel.codeVerifier = "test_code_verifier"
+        viewModel.selectedServer.value = "https://test.salesforce.com"
+        viewModel.doCodeExchange("test_auth_code", mockOnError, mockOnSuccess)
 
         verify { mockOnError("Token Request Error", any(), oauthException) }
         verify(exactly = 0) { mockOnSuccess(any()) }
@@ -857,13 +952,15 @@ class LoginViewModelMockTest {
     fun doCodeExchange_whenExchangeCodeThrowsIOException_callsOnAuthFlowError() = runBlocking {
         val mockOnError: (String, String?, Throwable?) -> Unit = mockk(relaxed = true)
         val mockOnSuccess: (UserAccount) -> Unit = mockk(relaxed = true)
-        val spyViewModel = spyk(viewModel)
 
         val ioException = IOException("Network error")
-        setupExchangeCodeMock(ioException)
+        setupExchangeCodeMock(viewModel, ioException)
 
-        spyViewModel.selectedServer.value = "https://test.salesforce.com"
-        spyViewModel.doCodeExchange("test_auth_code", mockOnError, mockOnSuccess)
+        // Populate codeVerifier deterministically (normally set async during auth-URL generation);
+        // doCodeExchange reads it via verifier!! before invoking the token exchange.
+        viewModel.codeVerifier = "test_code_verifier"
+        viewModel.selectedServer.value = "https://test.salesforce.com"
+        viewModel.doCodeExchange("test_auth_code", mockOnError, mockOnSuccess)
 
         verify { mockOnError("Token Request Error", "Network error", ioException) }
         verify(exactly = 0) { mockOnSuccess(any()) }
@@ -873,25 +970,46 @@ class LoginViewModelMockTest {
     fun doCodeExchange_whenExchangeCodeThrowsOAuthFailed_neverCallsOnAuthFlowComplete() = runBlocking {
         val mockOnError: (String, String?, Throwable?) -> Unit = mockk(relaxed = true)
         val mockOnSuccess: (UserAccount) -> Unit = mockk(relaxed = true)
-        val spyViewModel = spyk(viewModel)
 
         val tokenErrorResponse = mockk<TokenErrorResponse>(relaxed = true)
         tokenErrorResponse.error = "invalid_grant"
         tokenErrorResponse.errorDescription = "Expired authorization code"
         val oauthException = OAuthFailedException(tokenErrorResponse, 400)
-        setupExchangeCodeMock(oauthException)
+        setupExchangeCodeMock(viewModel, oauthException)
 
-        coEvery {
-            spyViewModel.onAuthFlowComplete(any(), any(), any(), any(), any(), any())
-        } just runs
-
-        spyViewModel.selectedServer.value = "https://test.salesforce.com"
-        spyViewModel.doCodeExchange("test_auth_code", mockOnError, mockOnSuccess)
+        // Populate codeVerifier deterministically (normally set async during auth-URL generation);
+        // doCodeExchange reads it via verifier!! before invoking the token exchange.
+        viewModel.codeVerifier = "test_code_verifier"
+        viewModel.selectedServer.value = "https://test.salesforce.com"
+        viewModel.doCodeExchange("test_auth_code", mockOnError, mockOnSuccess)
 
         verify { mockOnError("Token Request Error", any(), oauthException) }
         verify(exactly = 0) { mockOnSuccess(any()) }
+        // Because the token exchange threw, the flow must never reach account completion.
         coVerify(exactly = 0) {
-            spyViewModel.onAuthFlowComplete(any(), any(), any(), any(), any(), any())
+            onAuthFlowComplete(
+                tokenResponse = any(),
+                loginServer = any(),
+                consumerKey = any(),
+                onAuthFlowError = any(),
+                onAuthFlowSuccess = any(),
+                buildAccountName = any(),
+                nativeLogin = any(),
+                tokenMigration = any(),
+                credentialsIdentifier = any(),
+                context = any(),
+                userAccountManager = any(),
+                blockIntegrationUser = any(),
+                runtimeConfig = any(),
+                updateLoggingPrefs = any(),
+                fetchUserIdentity = any(),
+                startMainActivity = any(),
+                setAdministratorPreferences = any(),
+                addAccount = any(),
+                handleScreenLockPolicy = any(),
+                handleBiometricAuthPolicy = any(),
+                handleDuplicateUserAccount = any(),
+            )
         }
     }
 
