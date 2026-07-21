@@ -30,11 +30,9 @@ import android.webkit.WebView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.salesforce.androidsdk.accounts.UserAccount
 import com.salesforce.androidsdk.auth.AppAttestationClient
-import com.salesforce.androidsdk.auth.OAuth2
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkStatic
 import io.mockk.unmockkAll
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -150,8 +148,8 @@ class IDPAuthCodeHelperTest {
     @Test
     fun idpAuthCodeHelper_getAuthorizationPathForSP_whenAuthorizationUrlIsNull_returnsNull() = runTest {
 
-        stubOAuthAuthorizationUrl(returnValue = null)
         val idpAuthCodeHelper = createIdpAuthCodeHelper(appAttestationClient = null)
+        stubOAuthAuthorizationUrl(idpAuthCodeHelper, returnValue = null)
 
         val result = idpAuthCodeHelper.getAuthorizationPathForSP()
 
@@ -162,8 +160,8 @@ class IDPAuthCodeHelperTest {
     @Test
     fun idpAuthCodeHelper_getAuthorizationPathForSP_whenAuthorizationUrlHasNoQuery_returnsPathOnly() = runTest {
 
-        stubOAuthAuthorizationUrl(returnValue = URI("$TEST_LOGIN_SERVER$OAUTH_AUTHORIZE_PATH"))
         val idpAuthCodeHelper = createIdpAuthCodeHelper(appAttestationClient = null)
+        stubOAuthAuthorizationUrl(idpAuthCodeHelper, returnValue = URI("$TEST_LOGIN_SERVER$OAUTH_AUTHORIZE_PATH"))
 
         val result = idpAuthCodeHelper.getAuthorizationPathForSP()
 
@@ -203,13 +201,8 @@ class IDPAuthCodeHelperTest {
         appAttestationClient = appAttestationClient,
     )
 
-    private fun stubOAuthAuthorizationUrl(returnValue: URI?) {
-        mockkStatic(OAuth2::class)
-        every {
-            OAuth2.getAuthorizationUrl(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(),
-            )
-        } returns returnValue!!
+    private fun stubOAuthAuthorizationUrl(idpAuthCodeHelper: IDPAuthCodeHelper, returnValue: URI?) {
+        idpAuthCodeHelper.getAuthorizationUrlForSP = { _, _, _, _, _, _, _, _, _ -> returnValue }
     }
 
     // endregion Helpers
