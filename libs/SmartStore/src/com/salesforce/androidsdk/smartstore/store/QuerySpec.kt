@@ -317,7 +317,7 @@ class QuerySpec private constructor(
         ): String {
             val selectClause = computeSelectClauseStatic(soupName, selectPaths)
             val fromClause = computeFromClauseStatic(soupName)
-            val whereClause = computeWhereClauseStatic(soupName, queryType, matchKey, path)
+            val whereClause = computeWhereClauseStatic(soupName, queryType, matchKey, beginKey, endKey, path)
             val orderClause = computeOrderClauseStatic(soupName, orderPath, order)
             return selectClause + fromClause + whereClause + orderClause
         }
@@ -327,7 +327,7 @@ class QuerySpec private constructor(
             beginKey: String?, endKey: String?, likeKey: String?, path: String?
         ): String {
             val fromClause = computeFromClauseStatic(soupName)
-            val whereClause = computeWhereClauseStatic(soupName, queryType, matchKey, path)
+            val whereClause = computeWhereClauseStatic(soupName, queryType, matchKey, beginKey, endKey, path)
             return "$SELECT_COUNT $fromClause$whereClause"
         }
 
@@ -337,7 +337,7 @@ class QuerySpec private constructor(
             orderPath: String?, order: Order?, path: String?
         ): String {
             val fromClause = computeFromClauseStatic(soupName)
-            val whereClause = computeWhereClauseStatic(soupName, queryType, matchKey, path)
+            val whereClause = computeWhereClauseStatic(soupName, queryType, matchKey, beginKey, endKey, path)
             val orderClause = computeOrderClauseStatic(soupName, orderPath, order)
             return "$SELECT_ID $fromClause$whereClause$orderClause"
         }
@@ -354,7 +354,7 @@ class QuerySpec private constructor(
             return FROM + computeSoupReferenceStatic(soupName) + " "
         }
 
-        private fun computeWhereClauseStatic(soupName: String, queryType: QueryType, matchKey: String?, path: String?): String {
+        private fun computeWhereClauseStatic(soupName: String, queryType: QueryType, matchKey: String?, beginKey: String?, endKey: String?, path: String?): String {
             if (path == null && queryType != QueryType.match /* null path allowed for fts match query */) return ""
 
             var field: String? = null
@@ -366,10 +366,14 @@ class QuerySpec private constructor(
                 QueryType.exact -> "$field = ? "
                 QueryType.like -> "$field LIKE ? "
                 QueryType.range -> {
-                    // Note: we don't have beginKey/endKey here, but we need to construct the template
-                    // The actual args are handled by getArgs()
-                    // This constructs the maximal form - runtime binding handles nulls
-                    "$field >= ? AND $field <= ? "
+                    // The number of bind placeholders must match QuerySpec.getArgs(): one-sided
+                    // ranges bind a single arg, two-sided bind two, and an unbounded range binds none.
+                    when {
+                        beginKey == null && endKey == null -> ""
+                        endKey == null -> "$field >= ? "
+                        beginKey == null -> "$field <= ? "
+                        else -> "$field >= ? AND $field <= ? "
+                    }
                 }
                 QueryType.match -> {
                     val soupRef = computeSoupReferenceStatic(soupName)
