@@ -1118,6 +1118,41 @@ class SalesforceSDKManagerTests {
     }
 
     @Test
+    fun test_givenAccountWithPersistedFeatureFlags_whenGetUserAgent_thenFlagsLazilyHydrated() {
+        // Regression guard: per-user features are seeded lazily from the account's persisted
+        // featureFlags on first access (userFeatureSet), replacing eager startup hydration. No
+        // init-time hydratePerUserFeatures() pass is required for a persisted flag to surface in
+        // the user agent's ftr_ token.
+        val sdkManager = createSdkManagerWithMockedAccountManager()
+        val user = buildMinimalUserAccount(orgId = "org1", userId = "user1").apply {
+            featureFlags = setOf("PF")
+        }
+
+        val agent = sdkManager.getUserAgent("", user)
+        assertTrue("getUserAgent should contain lazily-hydrated persisted flag PF", agent.contains("PF"))
+    }
+
+    @Test
+    fun test_givenAccountWithPersistedFlags_whenRegisterNewFeature_thenPersistedFlagsPreserved() {
+        // Regression guard for the latent clobber that eager hydration was masking: registering a
+        // runtime feature for a user that was never pre-hydrated must union with — not overwrite —
+        // the account's persisted flags.
+        val sdkManager = createSdkManagerWithMockedAccountManager()
+        val user = buildMinimalUserAccount(orgId = "org1", userId = "user1").apply {
+            featureFlags = setOf("PF")
+        }
+
+        try {
+            sdkManager.registerUsedAppFeature("RT", user)
+            val agent = sdkManager.getUserAgent("", user)
+            assertTrue("persisted flag PF must survive registering RT", agent.contains("PF"))
+            assertTrue("runtime flag RT must be present", agent.contains("RT"))
+        } finally {
+            sdkManager.unregisterUsedAppFeature("RT", user)
+        }
+    }
+
+    @Test
     fun test_givenGlobalAndPerUserFlags_whenGetUserAgentForUser_thenUnionPresent() {
         val sdkManager = createSdkManagerWithMockedAccountManager()
 
@@ -1986,7 +2021,6 @@ class SalesforceSDKManagerTests {
             mockk<UserAccountManager>(relaxed = true).apply {
                 // currentUser returns null → getUserAgent falls back to no per-user key
                 every { currentUser } returns null
-                // No authenticated users → hydratePerUserFeatures is a no-op
                 every { authenticatedUsers } returns null
             }
         }

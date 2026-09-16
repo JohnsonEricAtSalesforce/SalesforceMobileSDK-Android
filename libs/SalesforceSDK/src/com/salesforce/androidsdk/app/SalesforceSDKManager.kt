@@ -1445,8 +1445,7 @@ open class SalesforceSDKManager protected constructor(
      */
     open fun getUserAgent(qualifier: String, user: UserAccount?) : String {
         val resolvedUser = user ?: userAccountManager.currentUser
-        val userKey = resolvedUser?.let { "${it.orgId}/${it.userId}" }
-        val userFeatures = userKey?.let { perUserFeatures[it] } ?: emptySet<String>()
+        val userFeatures = resolvedUser?.let { userFeatureSet(it) } ?: emptySet<String>()
         val allFeatures = ConcurrentSkipListSet<String>(CASE_INSENSITIVE_ORDER).apply {
             addAll(features.filterNotNull())
             addAll(userFeatures)
@@ -1517,8 +1516,7 @@ open class SalesforceSDKManager protected constructor(
      */
     internal fun isUserFeatureRegistered(appFeatureCode: String, user: UserAccount? = null): Boolean {
         val resolvedUser = user ?: userAccountManager.currentUser ?: return false
-        val key = "${resolvedUser.orgId}/${resolvedUser.userId}"
-        return perUserFeatures[key]?.contains(appFeatureCode) == true
+        return userFeatureSet(resolvedUser).contains(appFeatureCode)
     }
 
     /**
@@ -1529,8 +1527,7 @@ open class SalesforceSDKManager protected constructor(
      */
     fun registerUsedAppFeature(appFeatureCode: String, user: UserAccount?) {
         if (user == null) { registerUsedAppFeature(appFeatureCode); return }
-        val key = "${user.orgId}/${user.userId}"
-        val set = perUserFeatures.getOrPut(key) { ConcurrentSkipListSet(CASE_INSENSITIVE_ORDER) }
+        val set = userFeatureSet(user)
         set.add(appFeatureCode)
         persistUserFeatureFlags(user, set)
     }
@@ -1543,9 +1540,9 @@ open class SalesforceSDKManager protected constructor(
      */
     fun unregisterUsedAppFeature(appFeatureCode: String, user: UserAccount?) {
         if (user == null) { unregisterUsedAppFeature(appFeatureCode); return }
-        val key = "${user.orgId}/${user.userId}"
-        perUserFeatures[key]?.remove(appFeatureCode)
-        persistUserFeatureFlags(user, perUserFeatures[key] ?: emptySet())
+        val set = userFeatureSet(user)
+        set.remove(appFeatureCode)
+        persistUserFeatureFlags(user, set)
     }
 
     private fun persistUserFeatureFlags(user: UserAccount, flags: Set<String>) {
@@ -1554,19 +1551,23 @@ open class SalesforceSDKManager protected constructor(
         userAccountManager.updateAccount(account, user)
     }
 
-    /** Hydrates per-user features from persisted accounts at startup */
-    private fun hydratePerUserFeatures() {
-        val users = userAccountManager.authenticatedUsers ?: return
-        for (u in users) {
-            val flags = u.featureFlags
-            if (flags.isNotEmpty()) {
-                val key = "${u.orgId}/${u.userId}"
-                val set = ConcurrentSkipListSet<String>(CASE_INSENSITIVE_ORDER)
-                set.addAll(flags)
-                perUserFeatures[key] = set
-            }
+    /**
+     * Returns the mutable per-user feature set for [user], lazily seeding it from the account's
+     * persisted feature flags the first time it is accessed.
+     *
+     * This replaces eager startup hydration: init() previously called hydratePerUserFeatures(),
+     * which iterated every persisted account and decrypted each one (dozens of AccountManager
+     * binder IPC + AES ops per account) on the main thread before the first activity was shown — a
+     * cold-start cost that scaled with the number of logged-in accounts. The account passed in here
+     * is already built, so reading its featureFlags is free, and only the account actually being
+     * used is ever touched. Seeding is atomic (computeIfAbsent) so concurrent callers agree on one
+     * set instance, which also ensures register/unregister never clobber persisted flags for a
+     * user that was not pre-hydrated.
+     */
+    private fun userFeatureSet(user: UserAccount): ConcurrentSkipListSet<String> =
+        perUserFeatures.computeIfAbsent("${user.orgId}/${user.userId}") {
+            ConcurrentSkipListSet<String>(CASE_INSENSITIVE_ORDER).apply { addAll(user.featureFlags) }
         }
-    }
 
     /** The app type */
     open val appType = "Native"
@@ -2132,9 +2133,6 @@ open class SalesforceSDKManager protected constructor(
                     nativeLoginActivity,
                     googleCloudProjectId,
                 )
-                // Hydrate after INSTANCE is set — UserAccountManager.getInstance() checks
-                // SalesforceSDKManager.getInstance() internally, which requires INSTANCE != null.
-                INSTANCE?.hydratePerUserFeatures()
             }
             initInternal(context)
             EventsObservable.get().notifyEvent(
